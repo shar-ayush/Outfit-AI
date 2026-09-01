@@ -15,6 +15,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@googleapis/customsearch": "^8.0.0",
+    "@imgly/background-removal-node": "^1.4.5",
     "axios": "^1.20.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^1.41.3",
