@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Outfit AI",
+    "slug": "outfitai-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "outfitai",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F9F9F9"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourname.outfitai",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Outfit AI needs camera access to photograph your clothing items.",
+        "NSPhotoLibraryUsageDescription": "Outfit AI needs photo library access to add items from your gallery.",
+        "NSLocationWhenInUseUsageDescription": "Outfit AI uses your location to suggest weather-appropriate outfits."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#F9F9F9"
+      },
+      "package": "com.yourname.outfitai",
+      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        { "photosPermission": "Outfit AI needs photo access to add wardrobe items." }
+      ],
+      [
+        "expo-camera",
+        { "cameraPermission": "Outfit AI needs camera access to photograph clothing items." }
+      ],
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
