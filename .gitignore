@@ -3,6 +3,17 @@ backend/node_modules/
 
 # Expo node_modules (frontend)
 frontend/node_modules/
+# generated native folders
+/ios
+/android
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
 
 # Environment files
 *.env
