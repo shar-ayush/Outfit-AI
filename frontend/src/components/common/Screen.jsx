@@ -28,7 +28,7 @@ export default function Screen({
   ...rest
 }) {
   const content = (
-    <View style={[padded && styles.padded, style]}>{children}</View>
+    <View style={[styles.flex, padded && styles.padded, style]}>{children}</View>
   );
 
   return (
@@ -66,6 +66,6 @@ export default function Screen({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  padded: { flex: 1, paddingHorizontal: spacing.gutter },
+  padded: { paddingHorizontal: spacing.gutter },
   paddedContent: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.stackXl },
 });

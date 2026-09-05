@@ -18,10 +18,18 @@ import { colors, spacing } from '@/theme';
 export default function AuthHeader() {
   const router = useRouter();
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(auth)/welcome');
+    }
+  };
+
   return (
     <View style={styles.header}>
       <Pressable
-        onPress={() => router.back()}
+        onPress={handleBack}
         hitSlop={8}
         style={styles.iconButton}
         accessibilityLabel="Go back"
@@ -29,7 +37,7 @@ export default function AuthHeader() {
         <MaterialCommunityIcons name="arrow-left" size={22} color={colors.primary} />
       </Pressable>
 
-      <Text variant="displayMd" style={styles.wordmark}>
+      <Text variant="titleMd" style={styles.wordmark}>
         OUTFIT AI
       </Text>
 
@@ -54,7 +62,8 @@ const styles = StyleSheet.create({
   },
   spacer: { width: 40 },
   wordmark: {
-    fontSize: 17, // display-md scaled down to fit inline in a compact header bar
-    letterSpacing: -0.2,
+    fontFamily: 'Inter_700Bold',
+    fontSize: 16,
+    letterSpacing: 1.2,
   },
 });

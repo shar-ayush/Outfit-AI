@@ -21,6 +21,7 @@ export { default as ProgressBar } from './ProgressBar';
 export { default as Toast } from './Toast';
 export { default as ToastHost } from './ToastHost';
 export { default as AuthHeader } from './AuthHeader';
+export { default as OnboardingHeader } from './OnboardingHeader';
 export { default as Modal } from './Modal';
 export { default as BottomSheet, SheetOption } from './BottomSheet';
 export { default as SwipeableRow } from './SwipeableRow';
