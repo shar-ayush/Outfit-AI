@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import User from '../models/User.js'
 import ApiError from '../utils/ApiError.js'
 import ApiResponse from '../utils/ApiResponse.js'
@@ -231,3 +232,85 @@ export const getMe = asyncHandler(async (req, res) => {
     new ApiResponse(200, { user: req.user }, 'User fetched')
   )
 })
+
+// ─────────────────────────────────────────────
+// Forgot password — request a reset token
+// POST /api/auth/forgot-password
+// Body: { email }
+//
+// ⚠️ DEV-MODE BEHAVIOR: there is no email service wired into this
+// backend (no nodemailer/SES/SendGrid config exists anywhere in the
+// codebase). Rather than silently pretending an email was sent, this
+// endpoint returns the reset token directly in the response so the
+// frontend flow is fully testable without email infrastructure.
+// BEFORE SHIPPING TO PRODUCTION: remove `resetToken` from the response
+// and instead email it to the user via a real mail service.
+// ─────────────────────────────────────────────
+ 
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body
+  if (!email) throw new ApiError(400, 'Email is required')
+ 
+  const user = await User.findOne({ email: email.toLowerCase().trim() })
+ 
+  // Always return 200 even if no user found — don't leak which emails
+  // are registered. Only actually generate/store a token if one exists.
+  if (!user) {
+    return res.json(
+      new ApiResponse(200, {}, 'If that email exists, a reset link has been sent')
+    )
+  }
+ 
+  const resetToken = crypto.randomBytes(32).toString('hex')
+  const resetExpires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+ 
+  await User.findByIdAndUpdate(user._id, {
+    resetPasswordToken: resetToken,
+    resetPasswordExpires: resetExpires,
+  })
+ 
+  return res.json(
+    new ApiResponse(200, {
+      message: 'If that email exists, a reset link has been sent',
+      // DEV ONLY — see header comment. Remove this field in production.
+      devResetToken: resetToken,
+    }, 'Reset token generated')
+  )
+})
+ 
+// ─────────────────────────────────────────────
+// Reset password with token
+// POST /api/auth/reset-password
+// Body: { token, newPassword }
+// ─────────────────────────────────────────────
+ 
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { token, newPassword } = req.body
+ 
+  if (!token || !newPassword) {
+    throw new ApiError(400, 'Token and new password are required')
+  }
+  if (newPassword.length < 8) {
+    throw new ApiError(400, 'Password must be at least 8 characters')
+  }
+ 
+  const user = await User.findOne({
+    resetPasswordToken: token,
+    resetPasswordExpires: { $gt: new Date() },
+  }).select('+resetPasswordToken +resetPasswordExpires')
+ 
+  if (!user) {
+    throw new ApiError(400, 'Reset token is invalid or has expired')
+  }
+ 
+  user.password = newPassword
+  user.resetPasswordToken = undefined
+  user.resetPasswordExpires = undefined
+  user.refreshTokens = [] // force re-login everywhere, same as changePassword
+  await user.save()
+ 
+  return res.json(
+    new ApiResponse(200, {}, 'Password reset successfully — please log in')
+  )
+})
+ 

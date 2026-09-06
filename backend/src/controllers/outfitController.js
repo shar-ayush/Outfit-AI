@@ -119,3 +119,11 @@ export const removeOutfit = asyncHandler(async (req, res) => {
     new ApiResponse(200, result, 'Outfit deleted')
   )
 })
+
+export const getOutfitRecommendation = asyncHandler(async (req, res) => {
+  const recommendation = await getRecommendationByOutfitId(req.params.outfitId, req.user._id)
+ 
+  return res.json(
+    new ApiResponse(200, { recommendation }, 'Recommendation fetched')
+  )
+})

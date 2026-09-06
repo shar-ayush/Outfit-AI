@@ -12,32 +12,27 @@ import { processSignal } from '../services/learning/signalProcessor.js'
 // ─────────────────────────────────────────────
 
 export const createPlan = asyncHandler(async (req, res) => {
-  const { outfitId, date, occasion, notes } = req.body
-
+  const { outfitId, date, occasion, notes, recommendationId } = req.body // <-- added recommendationId
+ 
   if (!outfitId || !date) {
     throw new ApiError(400, 'outfitId and date are required')
   }
-
+ 
   const planDate = new Date(date)
   if (isNaN(planDate.getTime())) {
     throw new ApiError(400, 'Invalid date format')
   }
-
-  // Verify outfit belongs to user
-  const outfit = await Outfit.findOne({
-    _id:    outfitId,
-    userId: req.user._id,
-  })
+ 
+  const outfit = await Outfit.findOne({ _id: outfitId, userId: req.user._id })
   if (!outfit) throw new ApiError(404, 'Outfit not found')
-
-  // Normalise date to start of day to avoid timezone issues
+ 
   planDate.setHours(0, 0, 0, 0)
-
-  // Upsert — if plan already exists for this date, replace it
+ 
   const plan = await OutfitPlan.findOneAndUpdate(
     { userId: req.user._id, date: planDate },
     {
       outfitId,
+      recommendationId: recommendationId || undefined, // <-- added
       source:   'user_selected',
       status:   'planned',
       occasion: occasion || outfit.occasion,
@@ -45,7 +40,7 @@ export const createPlan = asyncHandler(async (req, res) => {
     },
     { upsert: true, new: true }
   )
-
+ 
   return res.status(201).json(
     new ApiResponse(201, { plan }, 'Outfit planned successfully')
   )
@@ -137,7 +132,7 @@ export const getPlans = asyncHandler(async (req, res) => {
     OutfitPlan.find(filter)
       .populate({
         path:   'outfitId',
-        select: 'items outfitName vibe',
+        select: 'items outfitName whyItWorksvibe',
         populate: {
           path:   'items.clothId',
           select: 'imageUrl category color',
@@ -170,24 +165,19 @@ export const getPlans = asyncHandler(async (req, res) => {
 
 export const updatePlanStatus = asyncHandler(async (req, res) => {
   const { status, rating, feedback } = req.body
-
+ 
   const validStatuses = ['planned', 'worn', 'skipped', 'cancelled']
   if (!validStatuses.includes(status)) {
     throw new ApiError(400, `Status must be one of: ${validStatuses.join(', ')}`)
   }
-
-  const plan = await OutfitPlan.findOne({
-    _id:    req.params.planId,
-    userId: req.user._id,
-  })
-
+ 
+  const plan = await OutfitPlan.findOne({ _id: req.params.planId, userId: req.user._id })
   if (!plan) throw new ApiError(404, 'Plan not found')
-
+ 
   plan.status = status
   if (status === 'worn') plan.wornAt = new Date()
   await plan.save()
-
-  // If marked as worn — trigger full learning pipeline
+ 
   if (status === 'worn') {
     await processSignal({
       userId:    req.user._id,
@@ -199,9 +189,10 @@ export const updatePlanStatus = asyncHandler(async (req, res) => {
         occasion: plan.occasion,
         dayOfWeek: new Date().getDay(),
       },
+      recommendationId: plan.recommendationId || undefined, // <-- added
     })
   }
-
+ 
   return res.json(
     new ApiResponse(200, { plan }, `Plan marked as ${status}`)
   )
