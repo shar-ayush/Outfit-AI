@@ -14,6 +14,7 @@ import React, { useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { format } from 'date-fns';
+import { parseLocalDate } from '@/utils/dateUtils';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '@/components/common/Screen';
 import Text from '@/components/common/Text';
@@ -54,7 +55,7 @@ export default function DayDetailScreen() {
   const [candidates, setCandidates] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const dateObj = new Date(date);
+  const dateObj = parseLocalDate(date);
   const dateLabel = format(dateObj, 'EEEE, MMM d');
 
   const handleGenerate = () => {

@@ -114,7 +114,10 @@ export default function HomeScreen() {
     outfitAction.mutate(
       { outfitId: currentOutfit.outfitId, action: 'saved', recommendationId: currentOutfit.recommendationId },
       {
-        onSuccess: () => showToast('Outfit saved', 'success'),
+        onSuccess: () => {
+          showToast('Outfit saved', 'success');
+          setCurrentOutfit((prev) => (prev ? { ...prev, isSaved: true } : prev));
+        },
         onError: () => showToast('Could not save this outfit', 'error'),
         onSettled: () => setActionLoading(null),
       }

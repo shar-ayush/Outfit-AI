@@ -51,19 +51,26 @@ export default function DailyOutfitCard({
       ) : (
         <Card noPadding elevated>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.itemsRow}>
-            {outfit.items.map((item, i) => (
-              <View
-                key={item._id || i}
-                style={[styles.itemThumb, i < outfit.items.length - 1 && styles.itemThumbBorder]}
-              >
-                <Image source={{ uri: item.imageUrl }} style={styles.itemImage} contentFit="contain" />
-                <View style={styles.categoryChip}>
-                  <Text variant="caption" style={styles.categoryChipText}>
-                    {item.subCategory || item.category}
-                  </Text>
+            {(outfit.items || []).map((item, i) => {
+              const cloth = item?.clothId && typeof item.clothId === 'object' ? item.clothId : item;
+              const imageUrl = cloth?.imageUrl || item?.imageUrl;
+              const label = cloth?.subCategory || item?.subCategory || cloth?.category || item?.category;
+              return (
+                <View
+                  key={cloth?._id || item?._id || i}
+                  style={[styles.itemThumb, i < outfit.items.length - 1 && styles.itemThumbBorder]}
+                >
+                  <Image source={{ uri: imageUrl }} style={styles.itemImage} contentFit="contain" />
+                  {label && (
+                    <View style={styles.categoryChip}>
+                      <Text variant="caption" style={styles.categoryChipText}>
+                        {label}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </ScrollView>
 
           <View style={styles.infoSection}>

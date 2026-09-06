@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { View, ScrollView, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { addWeeks, subWeeks, format } from 'date-fns';
+import { parseLocalDate } from '@/utils/dateUtils';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '@/components/common/Screen';
 import Text from '@/components/common/Text';
@@ -26,8 +27,8 @@ export default function PlannerScreen() {
   const handlePrevWeek = () => setWeekStart((d) => subWeeks(d, 1));
   const handleNextWeek = () => setWeekStart((d) => addWeeks(d, 1));
 
-  const rangeLabel = week
-    ? `${format(new Date(week[0].date), 'MMM d')} - ${format(new Date(week[6].date), 'MMM d')}`
+  const rangeLabel = week && week.length >= 7
+    ? `${format(parseLocalDate(week[0].date), 'MMM d')} - ${format(parseLocalDate(week[6].date), 'MMM d')}`
     : '';
 
   return (

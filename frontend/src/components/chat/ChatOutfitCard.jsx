@@ -16,20 +16,48 @@ import Tag from '@/components/common/Tag';
 import ScoreBreakdown from './ScoreBreakdown';
 import { colors, spacing, radius } from '@/theme';
 
-export default React.memo(function ChatOutfitCard({ outfit, onAction, actionLoading }) {
+export default function ChatOutfitCard({ outfit, onAction, actionLoading }) {
+  const [savedLocally, setSavedLocally] = React.useState(false);
+  const isSaved = Boolean(outfit?.isSaved || savedLocally);
+
+  const handleSave = () => {
+    if (isSaved) return;
+    setSavedLocally(true);
+    onAction('saved');
+  };
+
+  if (!outfit) return null;
+
+  const items = Array.isArray(outfit.items) ? outfit.items : [];
+  const score = outfit.score || (outfit.compatibilityScore != null ? {
+    total: outfit.compatibilityScore,
+    algorithm: outfit.compatibilityScore,
+    personalization: outfit.scoreBreakdown?.style || 50,
+  } : null);
+
   return (
     <Card noPadding elevated style={styles.card}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.itemsRow}>
-        {outfit.items.map((item, i) => (
-          <View key={item._id || i} style={styles.itemThumb}>
-            <Image source={{ uri: item.imageUrl }} style={styles.itemImage} contentFit="contain" />
-          </View>
-        ))}
+        {items.map((item, i) => {
+          const cloth = item?.clothId && typeof item.clothId === 'object' ? item.clothId : item;
+          const imageUrl = cloth?.imageUrl || item?.imageUrl;
+          const key = cloth?._id || item?._id || `thumb-${i}`;
+
+          return (
+            <View key={key} style={styles.itemThumb}>
+              {imageUrl ? (
+                <Image source={{ uri: imageUrl }} style={styles.itemImage} contentFit="contain" />
+              ) : (
+                <View style={styles.placeholderThumb} />
+              )}
+            </View>
+          );
+        })}
       </ScrollView>
 
       <View style={styles.body}>
         <View style={styles.titleRow}>
-          <Text variant="titleMd" style={styles.name}>{outfit.outfitName}</Text>
+          <Text variant="titleMd" style={styles.name}>{outfit.outfitName || 'Curated Outfit'}</Text>
           {outfit.vibe && <Tag label={outfit.vibe} variant="static" />}
         </View>
 
@@ -39,9 +67,11 @@ export default React.memo(function ChatOutfitCard({ outfit, onAction, actionLoad
           </Text>
         )}
 
-        <View style={styles.scoreWrap}>
-          <ScoreBreakdown score={outfit.score} />
-        </View>
+        {score && (
+          <View style={styles.scoreWrap}>
+            <ScoreBreakdown score={score} />
+          </View>
+        )}
 
         <View style={styles.actionsRow}>
           <Button
@@ -57,11 +87,12 @@ export default React.memo(function ChatOutfitCard({ outfit, onAction, actionLoad
             variant="secondary"
             size="md"
             fullWidth={false}
+            disabled={isSaved}
             loading={actionLoading === 'saved'}
-            onPress={() => onAction('saved')}
-            style={styles.actionFlex}
+            onPress={handleSave}
+            style={[styles.actionFlex, isSaved && styles.savedButton]}
           >
-            Save
+            {isSaved ? 'Saved' : 'Save'}
           </Button>
           <Button
             variant="ghost"
@@ -77,7 +108,7 @@ export default React.memo(function ChatOutfitCard({ outfit, onAction, actionLoad
       </View>
     </Card>
   );
-});
+}
 
 const styles = StyleSheet.create({
   card: { marginBottom: spacing.stackMd, maxWidth: '92%' },
@@ -111,4 +142,14 @@ const styles = StyleSheet.create({
   },
   actionsRow: { flexDirection: 'row', gap: spacing.stackSm },
   actionFlex: { flex: 1 },
+  savedButton: {
+    backgroundColor: colors.surfaceContainerHigh,
+    borderColor: colors.outlineVariant,
+    opacity: 0.85,
+  },
+  placeholderThumb: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors.surfaceContainerHigh,
+  },
 });

@@ -8,6 +8,7 @@
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { format, isToday } from 'date-fns';
+import { parseLocalDate } from '@/utils/dateUtils';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Text from '@/components/common/Text';
 import Tag from '@/components/common/Tag';
@@ -16,7 +17,7 @@ import OutfitItemsRow from '@/components/outfit/OutfitItemsRow';
 import { colors, radius, spacing } from '@/theme';
 
 export default function DayCard({ day, onPress }) {
-  const dateObj = new Date(day.date);
+  const dateObj = parseLocalDate(day.date);
   const today = isToday(dateObj);
   const plan = day.plan;
 

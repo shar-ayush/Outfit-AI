@@ -97,9 +97,11 @@ export default function StylistChatScreen() {
   };
 
   const handleOutfitAction = (outfit, action) => {
-    setOutfitActionLoading((prev) => ({ ...prev, [outfit.outfitId]: action }));
+    const outfitId = (outfit.outfitId || outfit._id)?.toString();
+    if (!outfitId) return;
+    setOutfitActionLoading((prev) => ({ ...prev, [outfitId]: action }));
     outfitAction.mutate(
-      { outfitId: outfit.outfitId, action, recommendationId: outfit.recommendationId },
+      { outfitId, action, recommendationId: outfit.recommendationId },
       {
         onSuccess: () => {
           const labels = { worn: 'Marked as worn', saved: 'Outfit saved', skipped: 'Skipped' };
@@ -109,7 +111,7 @@ export default function StylistChatScreen() {
         onSettled: () =>
           setOutfitActionLoading((prev) => {
             const next = { ...prev };
-            delete next[outfit.outfitId];
+            delete next[outfitId];
             return next;
           }),
       }
@@ -168,14 +170,17 @@ export default function StylistChatScreen() {
                         {message.content}
                       </Text>
                     )}
-                    {(message.outfits || []).map((outfit) => (
-                      <ChatOutfitCard
-                        key={outfit.outfitId}
-                        outfit={outfit}
-                        actionLoading={outfitActionLoading[outfit.outfitId]}
-                        onAction={(action) => handleOutfitAction(outfit, action)}
-                      />
-                    ))}
+                    {(message.outfits || []).map((outfit, outfitIdx) => {
+                      const outfitId = (outfit?.outfitId || outfit?._id)?.toString() || `outfit-${i}-${outfitIdx}`;
+                      return (
+                        <ChatOutfitCard
+                          key={outfitId}
+                          outfit={outfit}
+                          actionLoading={outfitActionLoading[outfitId]}
+                          onAction={(action) => handleOutfitAction(outfit, action)}
+                        />
+                      );
+                    })}
                   </View>
                 );
               }
