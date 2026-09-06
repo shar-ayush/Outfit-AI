@@ -7,12 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "outfitai",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F9F9F9"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourname.outfitai",
@@ -35,13 +29,28 @@
       "expo-secure-store",
       [
         "expo-image-picker",
-        { "photosPermission": "Outfit AI needs photo access to add wardrobe items." }
+        {
+          "photosPermission": "Outfit AI needs photo access to add wardrobe items."
+        }
       ],
       [
         "expo-camera",
-        { "cameraPermission": "Outfit AI needs camera access to photograph clothing items." }
+        {
+          "cameraPermission": "Outfit AI needs camera access to photograph clothing items."
+        }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-image",
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F9F9F9"
+        }
+      ],
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true
