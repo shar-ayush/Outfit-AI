@@ -68,6 +68,7 @@ export const logWear = asyncHandler(async (req, res) => {
     rating:    rating ? parseInt(rating) : null,
     feedback,
     context,
+    recommendationId: recommendationId || undefined, // <-- was missing entirely
   }).catch(err => console.error('Signal processing error:', err.message))
 
   return res.status(201).json(
@@ -82,8 +83,8 @@ export const logWear = asyncHandler(async (req, res) => {
 // ─────────────────────────────────────────────
 
 export const getHistory = asyncHandler(async (req, res) => {
-  const result = await getWearHistory(req.user._id, req.query)
-
+  const result = await getWearHistory(req.user._id, req.query) // req.query already includes clothId if present
+ 
   return res.json(
     new ApiResponse(200, result, 'Wear history fetched')
   )
@@ -144,3 +145,10 @@ function getSeason(month) {
   if (month >= 8  && month <= 10) return 'autumn'
   return 'winter'
 }
+
+export const deleteAllWearLogs = asyncHandler(async (req, res) => {
+  const result = await WearLog.deleteMany({ userId: req.user._id })
+  return res.json(
+    new ApiResponse(200, { deleted: true, count: result.deletedCount }, 'All wear logs deleted')
+  )
+})

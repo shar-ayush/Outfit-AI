@@ -4,6 +4,7 @@ import {
   getHistory,
   getWearLog,
   deleteWearLog,
+  deleteAllWearLogs
 } from '../controllers/wearLogController.js'
 import auth from '../middleware/auth.js'
 
@@ -13,6 +14,7 @@ router.use(auth)
 
 router.post('/',        logWear)
 router.get('/',         getHistory)
+router.delete('/', deleteAllWearLogs)
 router.get('/:logId',   getWearLog)
 router.delete('/:logId', deleteWearLog)
 

@@ -6,6 +6,7 @@ import {
   getSessionHistory,
   getUserSessions,
   clearSession,
+  clearAllSessions
 } from '../services/stylistService.js'
 
 // ─────────────────────────────────────────────
@@ -85,4 +86,9 @@ export const clearSessionHandler = asyncHandler(async (req, res) => {
   return res.json(
     new ApiResponse(200, result, 'Session cleared')
   )
+})
+
+export const clearAllSessionsHandler = asyncHandler(async (req, res) => {
+  const result = await clearAllSessions(req.user._id)
+  return res.json(new ApiResponse(200, result, 'All conversations cleared'))
 })

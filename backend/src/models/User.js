@@ -42,20 +42,20 @@ const userSchema = new mongoose.Schema({
   // Refresh tokens — stored to support multi-device and token revocation
   refreshTokens: [{ type: String, select: false }],
 
+  // Password reset — token is a random hex string, expires in 1 hour
+  resetPasswordToken:   { type: String, select: false },
+  resetPasswordExpires: { type: Date, select: false },
+
 }, { timestamps: true })
 
 // Hash password before save
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next()
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return
   this.password = await bcrypt.hash(this.password, 12)
-  next()
 })
 
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password)
 }
-
-userSchema.index({ email: 1 })
-userSchema.index({ username: 1 })
 
 export default mongoose.model('User', userSchema)
