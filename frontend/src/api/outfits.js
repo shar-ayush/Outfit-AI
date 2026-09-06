@@ -14,6 +14,24 @@ export async function suggestOutfits({ query, sessionId = null, count = 3, weath
   return data.data; // { outfits, sessionId, intent, meta } or { outfits: [], message }
 }
 
+export async function getDailyOutfit({ date, weatherContext = null }) {
+  const params = { date };
+  if (weatherContext && weatherContext.temperature !== undefined) {
+    params.temperature = weatherContext.temperature;
+    params.condition = weatherContext.condition;
+  }
+  const { data } = await apiClient.get('/outfits/daily', { params });
+  return data.data; // { outfit, recommendationId, weatherAtRecommendation, message, sessionId, isNew }
+}
+
+export async function refreshDailyOutfit({ date, weatherContext = null }) {
+  const { data } = await apiClient.post('/outfits/daily/refresh', {
+    date,
+    weatherContext,
+  });
+  return data.data;
+}
+
 // action: 'worn' | 'saved' | 'rejected' | 'skipped' | 'shared' | 'rated'
 export async function recordOutfitAction(outfitId, { action, recommendationId, rating, feedback, context }) {
   const { data } = await apiClient.post(`/outfits/${outfitId}/action`, {

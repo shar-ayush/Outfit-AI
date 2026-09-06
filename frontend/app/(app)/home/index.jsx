@@ -17,9 +17,10 @@
 // is scoped to this screen instance; it's intentionally not persisted to
 // stylistStore since the Home daily card isn't a "conversation".
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import Screen from '@/components/common/Screen';
 import Text from '@/components/common/Text';
 import WeatherWidget from '@/components/home/WeatherWidget';
@@ -27,87 +28,108 @@ import DailyOutfitCard from '@/components/home/DailyOutfitCard';
 import TodayPlannedOutfitCard from '@/components/home/TodayPlannedOutfitCard';
 import QuickActions from '@/components/home/QuickActions';
 import WardrobeSnapshot from '@/components/home/WardrobeSnapshot';
-import Badge from '@/components/common/Badge';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Pressable } from 'react-native';
 import { useAuthStore, useUIStore } from '@/stores';
 import { useWeather } from '@/hooks/useWeather';
-import { useSuggestOutfits, useOutfitAction } from '@/hooks/useOutfits';
+import { useDailyOutfit, useRefreshDailyOutfit, useOutfitAction } from '@/hooks/useOutfits';
 import { useSleepingItems } from '@/hooks/useAnalytics';
 import { useDayPlan } from '@/hooks/usePlans';
-import { getGreeting, getDayOfWeekLabel, toISODateString } from '@/utils/dateUtils';
+import { getGreeting, toISODateString } from '@/utils/dateUtils';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 import { colors, spacing, radius } from '@/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const showToast = useUIStore((s) => s.showToast);
 
   const { data: weather, isLoading: weatherLoading } = useWeather();
   const { data: sleeping, isLoading: sleepingLoading } = useSleepingItems();
-  const suggestOutfits = useSuggestOutfits();
   const outfitAction = useOutfitAction();
+  const refreshDailyOutfit = useRefreshDailyOutfit();
 
-  const [dailySessionId, setDailySessionId] = useState(null);
-  const [currentOutfit, setCurrentOutfit] = useState(null);
-  const [suggestMessage, setSuggestMessage] = useState(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [actionLoading, setActionLoading] = useState(null); // 'worn' | 'saved' | null
 
-  // Today's planned outfit
+  // Today's calendar day in user's device local timezone
   const todayDateStr = toISODateString(new Date());
-  const { data: todayPlan, isLoading: todayPlanLoading } = useDayPlan(todayDateStr);
 
-  const buildDailyQuery = useCallback(() => {
-    const day = getDayOfWeekLabel();
-    if (weather) {
-      return `Suggest a casual outfit for ${day}, ${weather.temperature}°C, ${weather.condition.toLowerCase()}`;
-    }
-    return `Suggest a casual outfit for ${day}`;
+  const weatherContext = useMemo(() => {
+    return weather
+      ? { temperature: weather.temperature, condition: weather.condition }
+      : null;
   }, [weather]);
 
-  const requestSuggestion = useCallback(
-    (isRefresh = false) => {
-      suggestOutfits.mutate(
-        {
-          query: buildDailyQuery(),
-          sessionId: isRefresh ? dailySessionId : null,
-          count: 1,
-          weatherContext: weather
-            ? { temperature: weather.temperature, condition: weather.condition }
-            : null,
-        },
-        {
-          onSuccess: (result) => {
-            setCurrentOutfit(result.outfits?.[0] || null);
-            setSuggestMessage(result.message || null);
-            setDailySessionId(result.sessionId || dailySessionId);
-          },
-          onError: () => {
-            showToast('Could not generate a suggestion right now', 'error');
-          },
-        }
-      );
-    },
-    [buildDailyQuery, dailySessionId, weather]
-  );
+  // Daily recommendation query — cached for today, zero re-trigger on screen switches
+  const {
+    data: dailyData,
+    isLoading: dailyLoading,
+  } = useDailyOutfit(todayDateStr, weatherContext, {
+    enabled: !weatherLoading,
+  });
 
-  // Fetch the initial daily suggestion exactly once, as soon as the weather
-  // query settles (success OR error/denied-permission) — using a ref guard
-  // rather than a dependency-array trick so a later weather refetch never
-  // causes a second, redundant suggestion call.
-  const hasRequestedInitial = React.useRef(false);
-  useEffect(() => {
-    if (weatherLoading || hasRequestedInitial.current) return;
-    hasRequestedInitial.current = true;
-    requestSuggestion(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weatherLoading]);
+  const currentOutfit = dailyData?.outfit || null;
+
+  // Today's planned outfit
+  const { data: todayPlan, isLoading: todayPlanLoading } = useDayPlan(todayDateStr);
+
+  // Smart Weather Nudge: detect major temperature swings (>= 5°C) or sudden rain/snow
+  const weatherNudge = useMemo(() => {
+    if (!weather || !dailyData?.weatherAtRecommendation || !currentOutfit) {
+      return null;
+    }
+
+    const recWeather = dailyData.weatherAtRecommendation;
+    const currentTemp = Math.round(weather.temperature);
+    const recTemp = Math.round(recWeather.temperature);
+    const tempDelta = currentTemp - recTemp;
+
+    const currentCondition = (weather.condition || '').toLowerCase();
+    const recCondition = (recWeather.condition || '').toLowerCase();
+
+    const isRain = (cond) => /rain|drizzle|shower|thunderstorm|storm/.test(cond);
+    const isSnow = (cond) => /snow|flurry|blizzard|sleet/.test(cond);
+
+    // Rainy/snow shift
+    if (isRain(currentCondition) && !isRain(recCondition)) {
+      return {
+        type: 'rain',
+        icon: 'weather-pouring',
+        message: `Rain detected (${currentTemp}°C). Tap to adjust outfit for wet weather.`,
+      };
+    }
+
+    if (isSnow(currentCondition) && !isSnow(recCondition)) {
+      return {
+        type: 'snow',
+        icon: 'weather-snowy-heavy',
+        message: `Snow detected (${currentTemp}°C). Tap to adjust outfit for cold weather.`,
+      };
+    }
+
+    // Significant temperature shift (>= 5°C)
+    if (Math.abs(tempDelta) >= 5) {
+      if (tempDelta > 0) {
+        return {
+          type: 'temp_warm',
+          icon: 'thermometer-chevron-up',
+          message: `Warmed up to ${currentTemp}°C (was ${recTemp}°C). Tap to adjust for warmer weather.`,
+        };
+      } else {
+        return {
+          type: 'temp_cold',
+          icon: 'thermometer-chevron-down',
+          message: `Cooled down to ${currentTemp}°C (was ${recTemp}°C). Tap to adjust for cooler weather.`,
+        };
+      }
+    }
+
+    return null;
+  }, [weather, dailyData, currentOutfit]);
 
   const handleWornToday = () => {
     if (!currentOutfit) return;
-    // Full occasion/rating capture happens in the log-wear modal (built in
-    // a later step) — navigate there with the outfit context pre-filled.
     router.push({
       pathname: '/(modals)/log-wear',
       params: { outfitId: currentOutfit.outfitId, recommendationId: currentOutfit.recommendationId },
@@ -122,7 +144,14 @@ export default function HomeScreen() {
       {
         onSuccess: () => {
           showToast('Outfit saved', 'success');
-          setCurrentOutfit((prev) => (prev ? { ...prev, isSaved: true } : prev));
+          // Update cached daily outfit isSaved state
+          queryClient.setQueryData(QUERY_KEYS.DAILY_OUTFIT(todayDateStr), (prev) => {
+            if (!prev?.outfit) return prev;
+            return {
+              ...prev,
+              outfit: { ...prev.outfit, isSaved: true },
+            };
+          });
         },
         onError: () => showToast('Could not save this outfit', 'error'),
         onSettled: () => setActionLoading(null),
@@ -130,7 +159,22 @@ export default function HomeScreen() {
     );
   };
 
-  const handleRefresh = () => requestSuggestion(true);
+  const handleRefresh = () => {
+    refreshDailyOutfit.mutate(
+      {
+        date: todayDateStr,
+        weatherContext,
+      },
+      {
+        onSuccess: () => {
+          showToast('Updated recommendation for today', 'success');
+        },
+        onError: () => {
+          showToast('Could not refresh suggestion right now', 'error');
+        },
+      }
+    );
+  };
 
   const sleepingItems = sleeping?.items || [];
   const sleepingCount = sleeping?.count || 0;
@@ -177,10 +221,11 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <DailyOutfitCard
           outfit={currentOutfit}
-          message={suggestMessage}
-          isLoading={suggestOutfits.isPending && !currentOutfit}
-          isRefreshing={suggestOutfits.isPending && !!currentOutfit}
+          message={dailyData?.message}
+          isLoading={dailyLoading && !currentOutfit}
+          isRefreshing={refreshDailyOutfit.isPending}
           isActionLoading={actionLoading}
+          weatherNudge={weatherNudge}
           onWornToday={handleWornToday}
           onSave={handleSave}
           onRefresh={handleRefresh}

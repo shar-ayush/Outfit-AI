@@ -3,6 +3,7 @@ import Cloth from '../models/Cloth.js'
 import Recommendation from '../models/Recommendation.js'
 import RecommendationEvent from '../models/RecommendationEvent.js'
 import ConversationSession from '../models/ConversationSession.js'
+import DailyRecommendation from '../models/DailyRecommendation.js'
 import { extractIntent } from './ai/intentService.js'
 import { hybridRetrieval } from './recommendation/hybridRetrieval.js'
 import { rankCandidates } from './recommendation/rankingService.js'
@@ -393,3 +394,187 @@ export async function createCustomOutfit(userId, { items, outfitName, occasion, 
     })
     .lean()
 }
+
+// ─────────────────────────────────────────────
+// Format populated Outfit document to match
+// client expectation for recommendation cards
+// ─────────────────────────────────────────────
+
+function formatDailyOutfitForClient(outfitDoc, recommendationId) {
+  if (!outfitDoc) return null
+  return {
+    outfitId: outfitDoc._id.toString(),
+    recommendationId: recommendationId?.toString() || null,
+    outfitName: outfitDoc.outfitName,
+    whyItWorks: outfitDoc.whyItWorks,
+    stylingTip: outfitDoc.stylingTip,
+    vibe: outfitDoc.vibe,
+    occasion: outfitDoc.occasion,
+    formality: outfitDoc.formality,
+    isSaved: Boolean(outfitDoc.isSaved),
+    items: (outfitDoc.items || []).map((item) => {
+      const cloth = item.clothId || item
+      return {
+        _id: cloth._id?.toString ? cloth._id.toString() : cloth._id,
+        imageUrl: cloth.imageUrl,
+        category: cloth.category,
+        subCategory: cloth.subCategory,
+        color: cloth.color,
+        style: cloth.style,
+        formality: cloth.formality,
+        role: item.role || cloth.category,
+      }
+    }),
+  }
+}
+
+// ─────────────────────────────────────────────
+// Get or create today's daily recommendation
+// ─────────────────────────────────────────────
+
+export async function getOrCreateDailyRecommendation({ userId, date, weatherContext = null }) {
+  if (!date) {
+    throw new ApiError(400, 'Date string (YYYY-MM-DD) is required')
+  }
+
+  // 1. Check if daily recommendation exists for user + date
+  const existingDaily = await DailyRecommendation.findOne({ userId, date })
+    .populate({
+      path: 'outfitId',
+      populate: {
+        path: 'items.clothId',
+        select: '-embedding',
+      },
+    })
+    .lean()
+
+  if (existingDaily && existingDaily.outfitId) {
+    return {
+      outfit: formatDailyOutfitForClient(existingDaily.outfitId, existingDaily.recommendationId),
+      recommendationId: existingDaily.recommendationId?.toString() || null,
+      weatherAtRecommendation: existingDaily.weatherAtRecommendation || null,
+      message: existingDaily.message || null,
+      sessionId: existingDaily.sessionId?.toString() || null,
+      isNew: false,
+    }
+  }
+
+  // 2. Generate initial daily suggestion
+  const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' })
+  let query = `Suggest a casual outfit for ${dayName}`
+  if (weatherContext && weatherContext.temperature !== undefined) {
+    query = `Suggest a casual outfit for ${dayName}, ${weatherContext.temperature}°C, ${weatherContext.condition ? weatherContext.condition.toLowerCase() : ''}`
+  }
+
+  const result = await getOutfitRecommendations({
+    userId,
+    query,
+    count: 1,
+    weatherContext,
+  })
+
+  const outfit = result.outfits?.[0] || null
+
+  if (outfit) {
+    const created = await DailyRecommendation.findOneAndUpdate(
+      { userId, date },
+      {
+        userId,
+        date,
+        outfitId: outfit.outfitId,
+        recommendationId: outfit.recommendationId,
+        weatherAtRecommendation: weatherContext
+          ? { temperature: weatherContext.temperature, condition: weatherContext.condition }
+          : null,
+        message: result.message || null,
+        sessionId: result.sessionId || null,
+      },
+      { upsert: true, new: true }
+    )
+
+    return {
+      outfit,
+      recommendationId: outfit.recommendationId,
+      weatherAtRecommendation: created.weatherAtRecommendation || null,
+      message: result.message || null,
+      sessionId: result.sessionId?.toString() || null,
+      isNew: true,
+    }
+  }
+
+  return {
+    outfit: null,
+    recommendationId: null,
+    weatherAtRecommendation: weatherContext
+      ? { temperature: weatherContext.temperature, condition: weatherContext.condition }
+      : null,
+    message: result.message || 'No items available to suggest an outfit.',
+    sessionId: result.sessionId?.toString() || null,
+    isNew: true,
+  }
+}
+
+// ─────────────────────────────────────────────
+// Refresh today's daily recommendation
+// ─────────────────────────────────────────────
+
+export async function refreshDailyRecommendation({ userId, date, weatherContext = null }) {
+  if (!date) {
+    throw new ApiError(400, 'Date string (YYYY-MM-DD) is required')
+  }
+
+  const existing = await DailyRecommendation.findOne({ userId, date })
+  const sessionId = existing?.sessionId || null
+
+  const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' })
+  let query = `Suggest a casual outfit for ${dayName}`
+  if (weatherContext && weatherContext.temperature !== undefined) {
+    query = `Suggest a casual outfit for ${dayName}, ${weatherContext.temperature}°C, ${weatherContext.condition ? weatherContext.condition.toLowerCase() : ''}`
+  }
+
+  const result = await getOutfitRecommendations({
+    userId,
+    query,
+    sessionId, // Preserves session novelty so repeated suggestions show varied outfits
+    count: 1,
+    weatherContext,
+  })
+
+  const outfit = result.outfits?.[0] || null
+
+  if (outfit) {
+    const updated = await DailyRecommendation.findOneAndUpdate(
+      { userId, date },
+      {
+        userId,
+        date,
+        outfitId: outfit.outfitId,
+        recommendationId: outfit.recommendationId,
+        weatherAtRecommendation: weatherContext
+          ? { temperature: weatherContext.temperature, condition: weatherContext.condition }
+          : null,
+        message: result.message || null,
+        sessionId: result.sessionId || sessionId,
+      },
+      { upsert: true, new: true }
+    )
+
+    return {
+      outfit,
+      recommendationId: outfit.recommendationId,
+      weatherAtRecommendation: updated.weatherAtRecommendation || null,
+      message: result.message || null,
+      sessionId: result.sessionId?.toString() || null,
+    }
+  }
+
+  return {
+    outfit: null,
+    recommendationId: null,
+    weatherAtRecommendation: weatherContext
+      ? { temperature: weatherContext.temperature, condition: weatherContext.condition }
+      : null,
+    message: result.message || 'Could not generate a new outfit suggestion.',
+    sessionId: result.sessionId?.toString() || null,
+  }
+}

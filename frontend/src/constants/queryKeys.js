@@ -17,6 +17,7 @@ export const QUERY_KEYS = {
   // Outfits
   SAVED_OUTFITS: (page) => ['outfits', 'saved', page],
   OUTFIT: (id) => ['outfits', id],
+  DAILY_OUTFIT: (date) => ['outfits', 'daily', date],
 
   // Plans
   WEEK_PLAN: (date) => ['plans', 'week', date],

@@ -8,6 +8,8 @@ import {
   getOutfitById,
   deleteOutfit,
   createCustomOutfit,
+  getOrCreateDailyRecommendation,
+  refreshDailyRecommendation,
 } from '../services/outfitService.js'
 
 // ─────────────────────────────────────────────
@@ -153,4 +155,55 @@ export const createOutfit = asyncHandler(async (req, res) => {
   return res.status(201).json(
     new ApiResponse(201, { outfit }, 'Outfit created successfully')
   )
-})
+})
+
+// ─────────────────────────────────────────────
+// Get or create today's daily recommendation
+// GET /api/outfits/daily?date=YYYY-MM-DD&temperature=...&condition=...
+// ─────────────────────────────────────────────
+
+export const getDailyOutfit = asyncHandler(async (req, res) => {
+  const { date, temperature, condition } = req.query
+
+  const targetDate = date || new Date().toISOString().slice(0, 10)
+  const weatherContext =
+    temperature !== undefined && temperature !== null && temperature !== ''
+      ? {
+          temperature: parseFloat(temperature),
+          condition: condition || 'Clear',
+        }
+      : null
+
+  const result = await getOrCreateDailyRecommendation({
+    userId: req.user._id,
+    date: targetDate,
+    weatherContext,
+  })
+
+  return res.json(
+    new ApiResponse(200, result, 'Daily recommendation retrieved')
+  )
+})
+
+// ─────────────────────────────────────────────
+// Refresh today's daily recommendation
+// POST /api/outfits/daily/refresh
+// Body: { date, weatherContext }
+// ─────────────────────────────────────────────
+
+export const refreshDailyOutfit = asyncHandler(async (req, res) => {
+  const { date, weatherContext } = req.body
+
+  const targetDate = date || new Date().toISOString().slice(0, 10)
+
+  const result = await refreshDailyRecommendation({
+    userId: req.user._id,
+    date: targetDate,
+    weatherContext: weatherContext || null,
+  })
+
+  return res.json(
+    new ApiResponse(200, result, 'Daily recommendation refreshed')
+  )
+})
+
