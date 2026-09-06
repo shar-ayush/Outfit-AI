@@ -36,13 +36,72 @@ app.use('/api', limiter)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// Logging in development
-if (process.env.NODE_ENV === 'development') {
+// Request & response logging (enabled by default unless explicitly in production)
+if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'))
+
+  app.use((req, res, next) => {
+    const startTime = Date.now()
+    const timestamp = new Date().toLocaleTimeString()
+
+    // Helper to safely format body (truncate huge base64/long strings for readability)
+    const sanitizeData = (data) => {
+      if (!data || typeof data !== 'object') return data
+      try {
+        const copy = Array.isArray(data) ? [...data] : { ...data }
+        for (const [key, val] of Object.entries(copy)) {
+          if (typeof val === 'string' && val.length > 250) {
+            copy[key] = `${val.substring(0, 50)}... [truncated, ${val.length} chars]`
+          } else if (key.toLowerCase().includes('password')) {
+            copy[key] = '********'
+          } else if (typeof val === 'object' && val !== null) {
+            copy[key] = sanitizeData(val)
+          }
+        }
+        return copy
+      } catch {
+        return data
+      }
+    }
+
+    console.log(`\n==================== [${timestamp}] API REQUEST ====================`)
+    console.log(`📍 ${req.method} ${req.originalUrl}`)
+    if (req.headers.authorization) {
+      console.log(`🔑 Auth: Bearer Token Present (${req.headers.authorization.substring(0, 18)}...)`)
+    } else {
+      console.log(`🔑 Auth: No Authorization Header`)
+    }
+
+    if (req.query && Object.keys(req.query).length > 0) {
+      console.log('🔍 Query Params:', JSON.stringify(req.query, null, 2))
+    }
+    if (req.params && Object.keys(req.params).length > 0) {
+      console.log('📌 Route Params:', JSON.stringify(req.params, null, 2))
+    }
+    if (req.body && Object.keys(req.body).length > 0) {
+      console.log('📦 Request Body:', JSON.stringify(sanitizeData(req.body), null, 2))
+    }
+
+    // Intercept res.json to log the response
+    const originalJson = res.json
+    res.json = function (body) {
+      const duration = Date.now() - startTime
+      const statusColor = res.statusCode >= 500 ? '❌' : res.statusCode >= 400 ? '⚠️' : '✅'
+
+      console.log(`-------------------- API RESPONSE [${statusColor} ${res.statusCode}] (${duration}ms) --------------------`)
+      console.log(`📍 ${req.method} ${req.originalUrl}`)
+      console.log('📤 Response Data:', JSON.stringify(sanitizeData(body), null, 2))
+      console.log(`========================================================================\n`)
+
+      return originalJson.call(this, body)
+    }
+
+    next()
+  })
 }
 
 // Health check
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({ success: true, message: 'OutfitAI API is running' })
 })
 

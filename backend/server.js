@@ -16,9 +16,11 @@ process.on('uncaughtException', (err) => {
 const startServer = async () => {
   await connectDB()
 
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n🚀 Server running on port ${PORT}`)
+    console.log(`🌐 Local: http://localhost:${PORT}`)
+    console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`)
+    console.log(`📋 Request & Response terminal logging is ACTIVE\n`)
   })
 }
 

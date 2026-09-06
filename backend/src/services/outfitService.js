@@ -164,10 +164,11 @@ export async function getOutfitRecommendations({
 
       return {
         ...outfit,
-        outfitId:         savedOutfit._id,
-        recommendationId: recommendation._id,
+        outfitId:         savedOutfit._id.toString(),
+        recommendationId: recommendation._id.toString(),
+        isSaved:          Boolean(savedOutfit.isSaved),
         items:            outfit.items.map(item => ({
-          _id:        item._id,
+          _id:        (item._id?.toString ? item._id.toString() : item._id),
           imageUrl:   item.imageUrl,
           category:   item.category,
           color:      item.color,
@@ -218,7 +219,7 @@ export async function getOutfitRecommendations({
 
   return {
     outfits:   savedOutfits,
-    sessionId: session._id,
+    sessionId: session._id.toString(),
     intent,
     meta: {
       candidatePoolSize: Object.values(candidatePool)

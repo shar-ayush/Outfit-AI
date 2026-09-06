@@ -6,41 +6,86 @@ import Outfit from '../models/Outfit.js'
 import { processSignal } from '../services/learning/signalProcessor.js'
 
 // ─────────────────────────────────────────────
+// Timezone-safe date helpers
+// ─────────────────────────────────────────────
+
+function normalizeDateToUTC(dateInput) {
+  if (!dateInput) return null
+  if (typeof dateInput === 'string') {
+    const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (match) {
+      const [, y, m, d] = match
+      return new Date(Date.UTC(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10), 0, 0, 0, 0))
+    }
+  }
+  const d = new Date(dateInput)
+  if (isNaN(d.getTime())) return null
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0))
+}
+
+function formatUTCDateToString(date) {
+  const d = new Date(date)
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+// ─────────────────────────────────────────────
 // Plan outfit for a date
 // POST /api/plans
 // Body: { outfitId, date, occasion, notes }
 // ─────────────────────────────────────────────
 
 export const createPlan = asyncHandler(async (req, res) => {
-  const { outfitId, date, occasion, notes, recommendationId } = req.body // <-- added recommendationId
- 
+  const { outfitId, date, occasion, notes, recommendationId } = req.body
+
   if (!outfitId || !date) {
     throw new ApiError(400, 'outfitId and date are required')
   }
- 
-  const planDate = new Date(date)
-  if (isNaN(planDate.getTime())) {
+
+  const planDate = normalizeDateToUTC(date)
+  if (!planDate) {
     throw new ApiError(400, 'Invalid date format')
   }
- 
+
   const outfit = await Outfit.findOne({ _id: outfitId, userId: req.user._id })
   if (!outfit) throw new ApiError(404, 'Outfit not found')
- 
-  planDate.setHours(0, 0, 0, 0)
- 
-  const plan = await OutfitPlan.findOneAndUpdate(
-    { userId: req.user._id, date: planDate },
-    {
-      outfitId,
-      recommendationId: recommendationId || undefined, // <-- added
-      source:   'user_selected',
-      status:   'planned',
-      occasion: occasion || outfit.occasion,
-      notes,
-    },
-    { upsert: true, new: true }
-  )
- 
+
+  // Search window covers both exact UTC midnight and legacy offset plans within ±12h
+  const windowStart = new Date(planDate.getTime() - 12 * 60 * 60 * 1000)
+  const windowEnd = new Date(planDate.getTime() + 12 * 60 * 60 * 1000)
+
+  const existingPlan = await OutfitPlan.findOne({
+    userId: req.user._id,
+    date: { $gte: windowStart, $lte: windowEnd },
+  })
+
+  let plan
+  if (existingPlan) {
+    existingPlan.outfitId = outfitId
+    existingPlan.recommendationId = recommendationId || undefined
+    existingPlan.source = 'user_selected'
+    existingPlan.status = 'planned'
+    existingPlan.occasion = occasion || outfit.occasion
+    existingPlan.notes = notes
+    existingPlan.date = planDate // Normalize to exact UTC midnight
+    plan = await existingPlan.save()
+  } else {
+    plan = await OutfitPlan.findOneAndUpdate(
+      { userId: req.user._id, date: planDate },
+      {
+        outfitId,
+        recommendationId: recommendationId || undefined,
+        source:   'user_selected',
+        status:   'planned',
+        occasion: occasion || outfit.occasion,
+        notes,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    )
+  }
+
   return res.status(201).json(
     new ApiResponse(201, { plan }, 'Outfit planned successfully')
   )
@@ -54,18 +99,18 @@ export const createPlan = asyncHandler(async (req, res) => {
 
 export const getWeekPlan = asyncHandler(async (req, res) => {
   const startDate = req.query.startDate
-    ? new Date(req.query.startDate)
-    : new Date()
+    ? normalizeDateToUTC(req.query.startDate)
+    : normalizeDateToUTC(new Date())
 
-  startDate.setHours(0, 0, 0, 0)
+  const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000 - 1)
 
-  const endDate = new Date(startDate)
-  endDate.setDate(startDate.getDate() + 6)
-  endDate.setHours(23, 59, 59, 999)
+  // Query plans within range, with 12h buffer for legacy plans
+  const queryStart = new Date(startDate.getTime() - 12 * 60 * 60 * 1000)
+  const queryEnd = new Date(endDate.getTime() + 12 * 60 * 60 * 1000)
 
   const plans = await OutfitPlan.find({
     userId: req.user._id,
-    date:   { $gte: startDate, $lte: endDate },
+    date:   { $gte: queryStart, $lte: queryEnd },
   })
     .populate({
       path:   'outfitId',
@@ -78,20 +123,26 @@ export const getWeekPlan = asyncHandler(async (req, res) => {
     .sort({ date: 1 })
     .lean()
 
-  // Build 7-day structure — fill gaps with null
+  const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
   const week = []
   for (let i = 0; i < 7; i++) {
-    const day = new Date(startDate)
-    day.setDate(startDate.getDate() + i)
+    const day = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000)
+    const dateStr = formatUTCDateToString(day)
+    const dayOfWeek = WEEKDAY_NAMES[day.getUTCDay()]
+
+    const dayStart = day.getTime()
 
     const plan = plans.find(p => {
-      const planDay = new Date(p.date)
-      return planDay.toDateString() === day.toDateString()
+      const pDateStr = formatUTCDateToString(p.date)
+      if (pDateStr === dateStr) return true
+      const pTime = new Date(p.date).getTime()
+      // Catch legacy offset plans saved within 12 hours before dayStart
+      return pTime >= dayStart - 12 * 3600000 && pTime < dayStart
     })
 
     week.push({
-      date:       day.toISOString().split('T')[0],
-      dayOfWeek:  day.toLocaleDateString('en-US', { weekday: 'long' }),
+      date:       dateStr,
+      dayOfWeek:  dayOfWeek,
       plan:       plan || null,
     })
   }
@@ -120,8 +171,14 @@ export const getPlans = asyncHandler(async (req, res) => {
 
   if (startDate || endDate) {
     filter.date = {}
-    if (startDate) filter.date.$gte = new Date(startDate)
-    if (endDate)   filter.date.$lte = new Date(endDate)
+    if (startDate) {
+      const s = normalizeDateToUTC(startDate)
+      filter.date.$gte = new Date(s.getTime() - 12 * 60 * 60 * 1000)
+    }
+    if (endDate) {
+      const e = normalizeDateToUTC(endDate)
+      filter.date.$lte = new Date(e.getTime() + 24 * 60 * 60 * 1000 - 1)
+    }
   }
 
   if (status) filter.status = status
@@ -132,7 +189,7 @@ export const getPlans = asyncHandler(async (req, res) => {
     OutfitPlan.find(filter)
       .populate({
         path:   'outfitId',
-        select: 'items outfitName whyItWorksvibe',
+        select: 'items outfitName whyItWorks vibe',
         populate: {
           path:   'items.clothId',
           select: 'imageUrl category color',
