@@ -42,3 +42,23 @@ export function daysSince(date) {
 export function toISODateString(date = new Date()) {
   return format(date, 'yyyy-MM-dd');
 }
+
+/**
+ * Parses a "YYYY-MM-DD" string into a local Date representing that calendar day at midnight.
+ * Avoids UTC timezone conversion shifts caused by `new Date("YYYY-MM-DD")`.
+ */
+export function parseLocalDate(dateInput) {
+  if (!dateInput) return new Date();
+  if (dateInput instanceof Date) return dateInput;
+  if (typeof dateInput === 'string') {
+    const parts = dateInput.split('T')[0].split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+  }
+  return new Date(dateInput);
+}
+
