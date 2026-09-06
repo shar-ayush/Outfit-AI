@@ -16,14 +16,14 @@ const getGenAI = () => {
 // For text generation (outfit reasoning, intent extraction, stylist chat)
 export const getGenerativeModel = () =>
   getGenAI().getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.5-flash-lite',
     generationConfig: { temperature: 0.7 },
   })
 
 // For JSON-only responses (structured extraction)
 export const getStructuredModel = () =>
   getGenAI().getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3.5-flash-lite',
     generationConfig: {
       temperature: 0.1,
       responseMimeType: 'application/json',
