@@ -7,6 +7,7 @@ import {
   getSavedOutfits,
   getOutfitById,
   deleteOutfit,
+  createCustomOutfit,
 } from '../services/outfitService.js'
 
 // ─────────────────────────────────────────────
@@ -127,3 +128,29 @@ export const getOutfitRecommendation = asyncHandler(async (req, res) => {
     new ApiResponse(200, { recommendation }, 'Recommendation fetched')
   )
 })
+
+// ─────────────────────────────────────────────
+// Create custom outfit
+// POST /api/outfits
+// Body: { items: [{ clothId, role }], outfitName?, occasion?, formality?, isSaved? }
+// ─────────────────────────────────────────────
+
+export const createOutfit = asyncHandler(async (req, res) => {
+  const { items, outfitName, occasion, formality, isSaved } = req.body
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    throw new ApiError(400, 'Items array is required')
+  }
+
+  const outfit = await createCustomOutfit(req.user._id, {
+    items,
+    outfitName,
+    occasion,
+    formality,
+    isSaved,
+  })
+
+  return res.status(201).json(
+    new ApiResponse(201, { outfit }, 'Outfit created successfully')
+  )
+})

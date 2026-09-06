@@ -66,3 +66,14 @@ export function useDeleteOutfit() {
     },
   });
 }
+
+export function useCreateOutfit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: outfitsApi.createOutfit,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['outfits', 'saved'] });
+      queryClient.invalidateQueries({ queryKey: ['plans'] });
+    },
+  });
+}

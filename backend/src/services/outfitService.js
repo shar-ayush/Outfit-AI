@@ -1,4 +1,5 @@
 import Outfit from '../models/Outfit.js'
+import Cloth from '../models/Cloth.js'
 import Recommendation from '../models/Recommendation.js'
 import RecommendationEvent from '../models/RecommendationEvent.js'
 import ConversationSession from '../models/ConversationSession.js'
@@ -341,4 +342,54 @@ export async function deleteOutfit(outfitId, userId) {
 
   if (!outfit) throw new ApiError(404, 'Outfit not found')
   return { deleted: true, outfitId }
+}
+
+// ─────────────────────────────────────────────
+// Create custom outfit (user created)
+// ─────────────────────────────────────────────
+
+export async function createCustomOutfit(userId, { items, outfitName, occasion, formality, isSaved = true }) {
+  if (!items || !items.length) {
+    throw new ApiError(400, 'Outfit must include at least one clothing item')
+  }
+
+  const clothIds = items.map((it) => (typeof it === 'string' ? it : it.clothId))
+  const clothes = await Cloth.find({ _id: { $in: clothIds }, userId }).lean()
+  if (clothes.length !== clothIds.length) {
+    throw new ApiError(400, 'One or more selected items were not found in your wardrobe')
+  }
+
+  const clothMap = new Map(clothes.map((c) => [c._id.toString(), c]))
+
+  const formattedItems = items.map((item, index) => {
+    const id = typeof item === 'string' ? item : item.clothId
+    const cloth = clothMap.get(id.toString())
+    return {
+      clothId: cloth._id,
+      role: item.role || cloth.category,
+      position: item.position !== undefined ? item.position : index,
+    }
+  })
+
+  const styles = [...new Set(clothes.flatMap((c) => c.style || []))]
+  const seasons = [...new Set(clothes.flatMap((c) => c.season || []))]
+
+  const outfit = await Outfit.create({
+    userId,
+    items: formattedItems,
+    outfitName: outfitName?.trim() || 'Custom Outfit',
+    occasion: occasion || 'casual',
+    formality: formality || clothes[0]?.formality || 'casual',
+    style: styles,
+    season: seasons,
+    source: 'user_created',
+    isSaved: isSaved !== false,
+  })
+
+  return await Outfit.findById(outfit._id)
+    .populate({
+      path: 'items.clothId',
+      select: '-embedding',
+    })
+    .lean()
 }

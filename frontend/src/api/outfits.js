@@ -31,6 +31,11 @@ export async function getSavedOutfits(params = {}) {
   return data.data; // { outfits, pagination }
 }
 
+export async function createOutfit(payload) {
+  const { data } = await apiClient.post('/outfits', payload);
+  return data.data.outfit;
+}
+
 export async function getOutfitById(outfitId) {
   const { data } = await apiClient.get(`/outfits/${outfitId}`);
   return data.data.outfit;

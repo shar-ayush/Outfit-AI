@@ -5,7 +5,8 @@ import {
   getSaved,
   getOutfit,
   removeOutfit,
-  getOutfitRecommendation
+  getOutfitRecommendation,
+  createOutfit,
 } from '../controllers/outfitController.js'
 import auth from '../middleware/auth.js'
 
@@ -15,6 +16,9 @@ router.use(auth)
 
 // Suggest — main recommendation endpoint
 router.post('/suggest', suggestOutfits)
+
+// Create custom outfit
+router.post('/', createOutfit)
 
 // Saved outfits — before /:outfitId to avoid conflict
 router.get('/saved', getSaved)
