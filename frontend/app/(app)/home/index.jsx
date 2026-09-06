@@ -24,6 +24,7 @@ import Screen from '@/components/common/Screen';
 import Text from '@/components/common/Text';
 import WeatherWidget from '@/components/home/WeatherWidget';
 import DailyOutfitCard from '@/components/home/DailyOutfitCard';
+import TodayPlannedOutfitCard from '@/components/home/TodayPlannedOutfitCard';
 import QuickActions from '@/components/home/QuickActions';
 import WardrobeSnapshot from '@/components/home/WardrobeSnapshot';
 import Badge from '@/components/common/Badge';
@@ -33,7 +34,8 @@ import { useAuthStore, useUIStore } from '@/stores';
 import { useWeather } from '@/hooks/useWeather';
 import { useSuggestOutfits, useOutfitAction } from '@/hooks/useOutfits';
 import { useSleepingItems } from '@/hooks/useAnalytics';
-import { getGreeting, getDayOfWeekLabel } from '@/utils/dateUtils';
+import { useDayPlan } from '@/hooks/usePlans';
+import { getGreeting, getDayOfWeekLabel, toISODateString } from '@/utils/dateUtils';
 import { colors, spacing, radius } from '@/theme';
 
 export default function HomeScreen() {
@@ -51,6 +53,10 @@ export default function HomeScreen() {
   const [suggestMessage, setSuggestMessage] = useState(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [actionLoading, setActionLoading] = useState(null); // 'worn' | 'saved' | null
+
+  // Today's planned outfit
+  const todayDateStr = toISODateString(new Date());
+  const { data: todayPlan, isLoading: todayPlanLoading } = useDayPlan(todayDateStr);
 
   const buildDailyQuery = useCallback(() => {
     const day = getDayOfWeekLabel();
@@ -157,6 +163,16 @@ export default function HomeScreen() {
           </Pressable>
         </Pressable>
       )}
+
+      {/* Today's Planned Outfit Card */}
+      <TodayPlannedOutfitCard
+        plan={todayPlan}
+        isLoading={todayPlanLoading}
+        onOpenPlan={() => router.push(`/(app)/planner/${todayDateStr}`)}
+        onViewOutfitDetail={(outfitId) =>
+          router.push({ pathname: '/(modals)/outfit-detail', params: { outfitId } })
+        }
+      />
 
       <View style={styles.section}>
         <DailyOutfitCard
