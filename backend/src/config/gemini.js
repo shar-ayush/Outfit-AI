@@ -1,18 +1,29 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+let genAI = null
+
+const getGenAI = () => {
+  if (!genAI) {
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not defined in environment variables')
+    }
+    genAI = new GoogleGenerativeAI(apiKey)
+  }
+  return genAI
+}
 
 // For text generation (outfit reasoning, intent extraction, stylist chat)
 export const getGenerativeModel = () =>
-  genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+  getGenAI().getGenerativeModel({
+    model: 'gemini-2.5-flash',
     generationConfig: { temperature: 0.7 },
   })
 
 // For JSON-only responses (structured extraction)
 export const getStructuredModel = () =>
-  genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+  getGenAI().getGenerativeModel({
+    model: 'gemini-2.5-flash',
     generationConfig: {
       temperature: 0.1,
       responseMimeType: 'application/json',
@@ -21,6 +32,6 @@ export const getStructuredModel = () =>
 
 // For embedding generation
 export const getEmbeddingModel = () =>
-  genAI.getGenerativeModel({ model: 'text-embedding-004' })
+  getGenAI().getGenerativeModel({ model: 'gemini-embedding-001' })
 
-export default genAI
+export default getGenAI
