@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 const outfitPlanSchema = new mongoose.Schema({
   userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   outfitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Outfit', required: true },
+  recommendationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Recommendation' },
   date:     { type: Date, required: true, index: true },
 
   source: {
