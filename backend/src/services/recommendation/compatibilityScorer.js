@@ -1,6 +1,16 @@
-// ─────────────────────────────────────────────
-// Core compatibility rules
-// ─────────────────────────────────────────────
+// backend/src/services/recommendation/compatibilityScorer.js
+//
+// FIX (gap #1): scoreOutfit() previously only returned { total, pairsScored
+// }. Outfit.scoreBreakdown has fields for {color, style, formality,
+// occasion, pattern} and outfitService.js writes them from
+// `outfit.score?.color` etc — but that source was never populated, so
+// every outfit's scoreBreakdown was silently empty in the database
+// despite the schema and docs implying otherwise. This version has
+// scoreItemPair return the full per-category breakdown, and scoreOutfit
+// average each category across all pairs, so those fields are finally
+// real. Every other stage of the pipeline (personalizationService,
+// noveltyService) spreads `...score` and only overwrites specific keys,
+// so these new fields survive unchanged all the way to Outfit.scoreBreakdown.
 
 const COLOR_HARMONY = {
   white:      { pairs: ['black','navy','beige','grey','brown','olive','burgundy','any'], neutral: true },
@@ -50,7 +60,7 @@ const STYLE_ACCEPTABLE_MIX = [
 ]
 
 // ─────────────────────────────────────────────
-// Pair scoring helpers
+// Pair scoring helpers — unchanged
 // ─────────────────────────────────────────────
 
 function getColorScore(c1, c2) {
@@ -101,56 +111,67 @@ function getOccasionScore(occasions1 = [], occasions2 = [], target) {
 }
 
 // ─────────────────────────────────────────────
-// Score a pair of items
+// Score a pair of items — NOW RETURNS THE FULL BREAKDOWN,
+// not just the weighted total.
 // ─────────────────────────────────────────────
 
 export function scoreItemPair(itemA, itemB, targetOccasion) {
-  const color    = getColorScore(itemA.color?.primary, itemB.color?.primary)
-  const pattern  = getPatternScore(itemA.pattern, itemB.pattern)
-  const style    = getStyleScore(itemA.style, itemB.style)
+  const color     = getColorScore(itemA.color?.primary, itemB.color?.primary)
+  const pattern   = getPatternScore(itemA.pattern, itemB.pattern)
+  const style     = getStyleScore(itemA.style, itemB.style)
   const formality = getFormalityScore(itemA.formality, itemB.formality)
   const occasion  = getOccasionScore(itemA.occasions, itemB.occasions, targetOccasion)
 
-  return (
+  const total =
     color    * 0.30 +
     pattern  * 0.15 +
     style    * 0.25 +
     formality * 0.20 +
     occasion  * 0.10
-  )
+
+  return { total, color, pattern, style, formality, occasion }
 }
 
 // ─────────────────────────────────────────────
-// Score a full outfit — average of all pairs
+// Score a full outfit — average of all pairs, PER CATEGORY.
+// `total` stays the same weighted average as before; the new
+// color/pattern/style/formality/occasion fields are each that
+// category's own average across every pair, rounded for display.
 // ─────────────────────────────────────────────
 
 export function scoreOutfit(items, targetOccasion) {
-  if (items.length < 2) return { total: 50, pairsScored: 0 }
+  if (items.length < 2) {
+    return { total: 50, pairsScored: 0, color: 50, pattern: 50, style: 50, formality: 50, occasion: 50 }
+  }
 
-  const pairScores = []
+  const pairBreakdowns = []
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
-      pairScores.push(scoreItemPair(items[i], items[j], targetOccasion))
+      pairBreakdowns.push(scoreItemPair(items[i], items[j], targetOccasion))
     }
   }
 
-  const avg = pairScores.reduce((s, p) => s + p, 0) / pairScores.length
+  const avg = (key) =>
+    Math.round(pairBreakdowns.reduce((s, p) => s + p[key], 0) / pairBreakdowns.length)
 
   return {
-    total:       Math.round(avg),
-    pairsScored: pairScores.length,
+    total:       avg('total'),
+    pairsScored: pairBreakdowns.length,
+    color:       avg('color'),
+    pattern:     avg('pattern'),
+    style:       avg('style'),
+    formality:   avg('formality'),
+    occasion:    avg('occasion'),
   }
 }
 
 // ─────────────────────────────────────────────
-// Generate outfit candidates via cartesian product
-// Shuffles each slot first so results vary across requests
+// Generate outfit candidates via cartesian product — unchanged
 // ─────────────────────────────────────────────
 
 export function generateCandidates(candidatePool, targetOccasion, maxCandidates = 500) {
   const { top = [], bottom = [], footwear = [], outerwear = [] } = candidatePool
 
-  // Define what templates are possible given available items
   const templates = []
 
   if (top.length && bottom.length && footwear.length) {
@@ -161,7 +182,6 @@ export function generateCandidates(candidatePool, targetOccasion, maxCandidates 
     templates.push([top, bottom, footwear, outerwear])
   }
 
-  // full_body items (dresses, jumpsuits)
   const fullBody = candidatePool.full_body || []
   if (fullBody.length && footwear.length) {
     templates.push([fullBody, footwear])
@@ -170,7 +190,6 @@ export function generateCandidates(candidatePool, targetOccasion, maxCandidates 
   const results = []
 
   for (const template of templates) {
-    // Shuffle each slot — different results each request
     const shuffled = template.map(slot =>
       [...slot].sort(() => Math.random() - 0.5)
     )
@@ -195,8 +214,7 @@ function collectCombinations(slots, depth, current, results, cap, targetOccasion
 }
 
 // ─────────────────────────────────────────────
-// Diversity enforcement
-// No two selected outfits share more than 50% of items
+// Diversity enforcement — unchanged
 // ─────────────────────────────────────────────
 
 export function selectDiverseOutfits(sortedCandidates, count = 5) {

@@ -56,6 +56,10 @@ export async function uploadToCloudinary(buffer, options = {}) {
   } = options
 
   return new Promise((resolve, reject) => {
+    if (!process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return reject(new ApiError(500, 'Cloudinary API credentials missing. Check CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET in backend .env'))
+    }
+
     const uploadOptions = {
       folder,
       resource_type: 'image',
@@ -71,30 +75,34 @@ export async function uploadToCloudinary(buffer, options = {}) {
       ...(publicId && { public_id: publicId }),
     }
 
-    // Upload from stream
-    const uploadStream = cloudinary.uploader.upload_stream(
-      uploadOptions,
-      (error, result) => {
-        if (error) {
-          reject(new ApiError(500, `Cloudinary upload failed: ${error.message}`))
-          return
+    try {
+      // Upload from stream
+      const uploadStream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) {
+            reject(new ApiError(500, `Cloudinary upload failed: ${error.message || error}`))
+            return
+          }
+          resolve({
+            imageUrl:  result.secure_url,
+            publicId:  result.public_id,
+            width:     result.width,
+            height:    result.height,
+            format:    result.format,
+            bytes:     result.bytes,
+          })
         }
-        resolve({
-          imageUrl:  result.secure_url,
-          publicId:  result.public_id,
-          width:     result.width,
-          height:    result.height,
-          format:    result.format,
-          bytes:     result.bytes,
-        })
-      }
-    )
+      )
 
-    // Pipe buffer into upload stream
-    const readable = new Readable()
-    readable.push(buffer)
-    readable.push(null)
-    readable.pipe(uploadStream)
+      // Pipe buffer into upload stream
+      const readable = new Readable()
+      readable.push(buffer)
+      readable.push(null)
+      readable.pipe(uploadStream)
+    } catch (err) {
+      reject(new ApiError(500, `Cloudinary upload error: ${err.message || err}`))
+    }
   })
 }
 
@@ -123,23 +131,20 @@ export async function deleteFromCloudinary(publicId) {
 // ─────────────────────────────────────────────
 
 export async function processAndUploadImage(imageBuffer, mimeType, userId) {
-  // Step 1 — upload original first (in background, non-blocking)
-  const originalUploadPromise = uploadToCloudinary(imageBuffer, {
-    folder: `outfitai/${userId}/original`,
-    format: mimeType.split('/')[1] || 'jpeg',
-  })
-
-  // Step 2 — remove background
+  // Step 1 — remove background
   const { buffer: processedBuffer, mimeType: processedMimeType } =
     await removeImageBackground(imageBuffer, mimeType)
 
-  // Step 3 — upload processed image
+  // Step 2 — upload both processed and original to Cloudinary
   const [processedResult, originalResult] = await Promise.all([
     uploadToCloudinary(processedBuffer, {
       folder: `outfitai/${userId}/wardrobe`,
       format: 'png',
     }),
-    originalUploadPromise,
+    uploadToCloudinary(imageBuffer, {
+      folder: `outfitai/${userId}/original`,
+      format: mimeType.split('/')[1] || 'jpeg',
+    }),
   ])
 
   return {

@@ -8,7 +8,10 @@ import ApiError from '../../utils/ApiError.js'
 
 export async function generateEmbedding(text) {
   const model  = getEmbeddingModel()
-  const result = await model.embedContent(text)
+  const result = await model.embedContent({
+    content: { parts: [{ text }] },
+    outputDimensionality: 768,
+  })
   return result.embedding.values // array of 768 floats
 }
 

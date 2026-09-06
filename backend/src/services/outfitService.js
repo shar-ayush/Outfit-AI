@@ -247,43 +247,24 @@ export async function recordOutfitAction({
 }) {
   const outfit = await Outfit.findOne({ _id: outfitId, userId })
   if (!outfit) throw new ApiError(404, 'Outfit not found')
-
-  // Log the recommendation event
-  if (recommendationId) {
-    await RecommendationEvent.create({
-      userId,
-      recommendationId,
-      outfitId,
-      eventType,
-      value:    rating,
-      context: {
-        occasion:  context.occasion,
-        dayOfWeek: new Date().getDay(),
-        temperature: context.temperature,
-      },
-      timestamp: new Date(),
-    })
-
-    // Update recommendation status
-    await Recommendation.findByIdAndUpdate(recommendationId, {
-      status: 'interacted',
-    })
-  }
-
+ 
   // Save outfit if action is save
   if (eventType === 'saved') {
     await Outfit.findByIdAndUpdate(outfitId, { isSaved: true })
   }
-
-  // Trigger learning pipeline
+ 
+  // processSignal now handles RecommendationEvent creation + Recommendation
+  // status update itself when recommendationId is provided — no need to
+  // duplicate that here.
   await processSignal({
     userId,
     outfitId,
     eventType,
     rating,
     context,
+    recommendationId,
   })
-
+ 
   return { success: true, eventType, outfitId }
 }
 
@@ -332,6 +313,18 @@ export async function getOutfitById(outfitId, userId) {
 
   if (!outfit) throw new ApiError(404, 'Outfit not found')
   return outfit
+}
+
+export async function getRecommendationByOutfitId(outfitId, userId) {
+  // An outfit can only ever have been recommended once by the current
+  // pipeline (one Outfit doc <-> one Recommendation doc, created together
+  // in getOutfitRecommendations) — .findOne with no sort ambiguity needed,
+  // but sort by createdAt desc defensively in case that ever changes.
+  const recommendation = await Recommendation.findOne({ outfitId, userId })
+    .sort({ createdAt: -1 })
+    .lean()
+ 
+  return recommendation // null if this outfit was user-created, not suggested
 }
 
 // ─────────────────────────────────────────────

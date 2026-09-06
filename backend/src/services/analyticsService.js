@@ -153,11 +153,16 @@ export async function getWardrobeUtilization(userId) {
 // Wear log history with context
 // ─────────────────────────────────────────────
 
-export async function getWearHistory(userId, { page = 1, limit = 20 } = {}) {
+export async function getWearHistory(userId, { page = 1, limit = 20, clothId } = {}) {
   const skip = (parseInt(page) - 1) * parseInt(limit)
-
+ 
+  const filter = { userId }
+  if (clothId) {
+    filter['items.clothId'] = clothId // matches wear logs that include this item
+  }
+ 
   const [logs, total] = await Promise.all([
-    WearLog.find({ userId })
+    WearLog.find(filter)
       .populate({
         path:   'outfitId',
         select: 'outfitName items',
@@ -170,9 +175,9 @@ export async function getWearHistory(userId, { page = 1, limit = 20 } = {}) {
       .skip(skip)
       .limit(parseInt(limit))
       .lean(),
-    WearLog.countDocuments({ userId }),
+    WearLog.countDocuments(filter),
   ])
-
+ 
   return {
     logs,
     pagination: {

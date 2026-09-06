@@ -227,3 +227,8 @@ export async function clearSession(sessionId, userId) {
   if (!session) throw new ApiError(404, 'Session not found')
   return { cleared: true, sessionId }
 }
+
+export async function clearAllSessions(userId) {
+  const result = await ConversationSession.deleteMany({ userId })
+  return { deleted: true, count: result.deletedCount }
+}
