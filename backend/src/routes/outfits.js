@@ -5,6 +5,7 @@ import {
   getSaved,
   getOutfit,
   removeOutfit,
+  getOutfitRecommendation
 } from '../controllers/outfitController.js'
 import auth from '../middleware/auth.js'
 
@@ -24,5 +25,8 @@ router.delete('/:outfitId',      removeOutfit)
 
 // Record action on outfit
 router.post('/:outfitId/action', outfitAction)
+
+router.get('/:outfitId/recommendation', getOutfitRecommendation)
+
 
 export default router
