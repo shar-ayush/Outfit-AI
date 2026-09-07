@@ -40,12 +40,9 @@ function dedupeExactOutfits(outfits, allCandidates) {
         score:      replacement.score,
         outfitName: `${outfit.outfitName} (Alt)`,
       })
-    } else {
-      // Nothing left to substitute — wardrobe genuinely can't
-      // support more variety. Keep the duplicate rather than
-      // silently returning fewer outfits than requested.
-      result.push(outfit)
     }
+    // If no distinct replacement exists, do not push a duplicate clone.
+    // Returning genuinely unique outfits maintains trust and prevents fake duplicate cards.
   }
 
   return result

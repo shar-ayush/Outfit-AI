@@ -254,7 +254,8 @@ Pre-scored candidates (already ranked by an algorithm combining color harmony,
 semantic similarity to the query, and constraint match):
 ${JSON.stringify(candidateSummaries, null, 2)}
 
-TASK: Select ${count} of these candidates as the final outfits to show the user.
+TASK: Select up to ${count} distinct candidates as the final outfits to show the user.
+If the candidate pool has fewer than ${count} genuinely unique outfits that satisfy the constraints, return only as many unique outfits as exist (e.g. 1 or 2). NEVER return duplicate combinations of items.
 
 RULES:
 1. NEVER select a candidate that violates an EXCLUSION — this is a hard rule, no exceptions.
@@ -264,15 +265,12 @@ RULES:
    candidates satisfy a locked slot, you may select the closest available option — but
    you MUST say so plainly in whyItWorks (e.g. "styled with your white trousers here
    since no second white skirt was available").
-3. Enforce variety ONLY on slots that are NOT locked. Two outfits may legitimately
-   share every locked-slot item if the wardrobe only supports one good option there —
-   that is correct behavior, not a bug. Vary outerwear, footwear, style, or accessories
-   (whichever are unconstrained) to make the ${count} outfits feel genuinely distinct.
-4. Give each outfit a different name and a different vibe word.
-5. Do not select the exact same candidate index more than once.
+3. ANCHOR & EXPLORE: When only one garment in the wardrobe satisfies a locked slot (e.g. only one black top exists), KEEP that garment locked across looks, but actively vary the UNCONSTRAINED slots (footwear, bottoms, outerwear, accessories) so the recommended outfits showcase versatile, distinct ways to wear that anchor piece.
+4. ABSOLUTE UNIQUENESS: Every selected outfit must have a distinct set of items. Never select identical sets of clothes with different names.
+5. Give each outfit a different name and a different vibe word.
 6. If this is a refinement where the user asked for "something else" or a different item for a slot (e.g. "something else in top", "different shoes"), DO NOT select outfits that feature the exact same item from that slot shown in the previous conversation. Pick candidates with different pieces for that slot.
 
-Return ONLY a JSON array of exactly ${count} objects:
+Return ONLY a JSON array of up to ${count} objects (at least 1, at most ${count}):
 [
   {
     "selectedIndex": <number from the candidates list>,

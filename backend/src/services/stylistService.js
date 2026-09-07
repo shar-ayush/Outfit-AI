@@ -13,10 +13,17 @@ import ApiError from '../utils/ApiError.js'
 // it just wasn't being said out loud until now.
 // ─────────────────────────────────────────────
 
-function buildOutfitResponseMessage(outfits) {
+function buildOutfitResponseMessage(outfits, requestedCount = 3) {
   if (outfits.length === 0) return null
 
-  const base = `Here are ${outfits.length} outfit${outfits.length > 1 ? 's' : ''} based on your wardrobe.`
+  let base = `Here are ${outfits.length} distinct outfits based on your wardrobe.`
+  if (outfits.length === 1) {
+    if (requestedCount === 1) {
+      base = 'Here is an outfit tailored to your request.'
+    } else {
+      base = 'Here is the best outfit matching your request from your current wardrobe.'
+    }
+  }
 
   const substitutions = outfits
     .map((outfit, i) => ({ index: i, note: outfit.substitutionNote }))
@@ -25,7 +32,7 @@ function buildOutfitResponseMessage(outfits) {
   if (substitutions.length === 0) return base
 
   const notes = substitutions
-    .map(s => `Outfit ${s.index + 1}: ${s.note}`)
+    .map(s => (outfits.length > 1 ? `Outfit ${s.index + 1}: ${s.note}` : s.note))
     .join(' ')
 
   return `${base} A couple of notes on fit to your request — ${notes}`
@@ -62,6 +69,8 @@ export async function handleStylistMessage({
     return handleFashionQuestion({ userId, message, session, sessionId })
   }
 
+  const targetCount = intent.requestedCount || 3
+
   // Outfit request — run full recommendation pipeline
   // Pass the already-extracted+merged intent down so
   // getOutfitRecommendations doesn't call Gemini again
@@ -71,7 +80,7 @@ export async function handleStylistMessage({
     sessionId,
     session,
     precomputedIntent: intent,
-    count:   3,
+    count:   targetCount,
     weatherContext,
   })
 
@@ -81,7 +90,7 @@ export async function handleStylistMessage({
     sessionId: result.sessionId,
     intent:    result.intent,
     message:   result.outfits.length > 0
-      ? buildOutfitResponseMessage(result.outfits)
+      ? buildOutfitResponseMessage(result.outfits, targetCount)
       : result.message,
   }
 }

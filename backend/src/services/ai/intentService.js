@@ -79,6 +79,7 @@ function validateIntent(raw) {
 
     slotConstraints:     validateSlotConstraints(raw.slotConstraints),
     resetSlots:          Array.isArray(raw.resetSlots) ? raw.resetSlots.filter(s => VALID.slots.includes(s)) : [],
+    requestedCount:      typeof raw.requestedCount === 'number' && raw.requestedCount >= 1 && raw.requestedCount <= 3 ? raw.requestedCount : 3,
     excludeConstraints:  validateExcludeConstraints(raw.excludeConstraints),
     moodDescriptor:      typeof raw.moodDescriptor === 'string' && raw.moodDescriptor.trim().length > 0
       ? raw.moodDescriptor.trim()
@@ -122,6 +123,10 @@ When in doubt, prefer "outfit_request".
 
 STEP 2 — If outfit_request, extract ALL of the following:
 - occasions, formality, season, weatherSuitability, style — as before
+- "requestedCount": integer 1, 2, or 3.
+  - Set 1 if user asks for "an outfit", "just 1 option", "one look", "single outfit".
+  - Set 2 if user asks for "2 options", "a couple of looks", "two outfits".
+  - Set 3 for "3 outfits", "some outfits", "options", or when no number is specified.
 - "slotConstraints": ONLY populate a slot (top/bottom/footwear/outerwear/accessory/full_body)
   when the user EXPLICITLY named a color, garment type, or pattern for that slot.
   Do not guess or fill in slots the user didn't mention. Leave a slot entirely
@@ -129,11 +134,13 @@ STEP 2 — If outfit_request, extract ALL of the following:
 - "resetSlots": array of slot names (from [top, bottom, footwear, outerwear, accessory, full_body])
   where the user explicitly asks to CHANGE, REPLACE, or TRY SOMETHING ELSE for that slot
   (e.g. "suggest something else in top", "different top", "change shirt", "any top",
-  "try another footwear", "different jacket"). This tells the system to DROP previous constraints on that slot.
+  "try another footwear", "different jacket").
+  CRITICAL: If the user says "only [slot]" or "just [slot]" (e.g. "I want only black top", "just show me outfits with sneakers"),
+  they want to ANCHOR on that slot and free up the other slots. Include all other previously constrained slots in "resetSlots" so the system can explore versatile combinations!
 - "excludeConstraints": array of { slot, attribute, value } for anything the user
   said NOT to include (e.g. "no heels" → {slot: "footwear", attribute: "subCategory", value: "heels"};
   "nothing black" → {slot: <any if unspecified>, attribute: "color", value: "black"}.
-  CRITICAL: If the user says "something else in top" or "different top" after a specific top (e.g. pink) was suggested,
+  If the user says "something else in top" or "different top" after a specific top (e.g. pink) was suggested,
   also add an exclusion for that previous top color/type so the same item is not repeated!).
 - "moodDescriptor": a short phrase capturing any qualitative/emotional request that
   doesn't map to a discrete field (e.g. "feel powerful", "dark academia vibe",
@@ -159,6 +166,7 @@ Return ONLY valid JSON matching this shape:
     "outerwear": { "color": string|null, "subCategory": string|null, "pattern": string|null } | null
   },
   "resetSlots": ["top" | "bottom" | "footwear" | "outerwear" | "accessory" | "full_body"],
+  "requestedCount": 1 | 2 | 3,
   "excludeConstraints": [{ "slot": string, "attribute": "color"|"subCategory"|"pattern", "value": string }],
   "moodDescriptor": string or null,
   "isRefinement": boolean,
@@ -167,15 +175,15 @@ Return ONLY valid JSON matching this shape:
 
 Examples:
 - "suggest me an outfit with pink top white skirt and black footwear" →
-  {"messageType":"outfit_request","occasions":"casual","formality":"casual","season":null,"weatherSuitability":null,"style":["casual"],"slotConstraints":{"top":{"color":"pink","subCategory":null,"pattern":null},"bottom":{"color":"white","subCategory":"skirt","pattern":null},"footwear":{"color":"black","subCategory":null,"pattern":null}},"resetSlots":[],"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
+  {"messageType":"outfit_request","occasions":"casual","formality":"casual","season":null,"weatherSuitability":null,"style":["casual"],"slotConstraints":{"top":{"color":"pink","subCategory":null,"pattern":null},"bottom":{"color":"white","subCategory":"skirt","pattern":null},"footwear":{"color":"black","subCategory":null,"pattern":null}},"resetSlots":[],"requestedCount":3,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
+- "I want only black top" (after pink top + black trousers + sandals) →
+  {"messageType":"outfit_request","occasions":"casual","formality":"casual","season":null,"weatherSuitability":null,"style":[],"slotConstraints":{"top":{"color":"black","subCategory":null,"pattern":null}},"resetSlots":["bottom","footwear"],"requestedCount":3,"excludeConstraints":[{"slot":"top","attribute":"color","value":"pink"}],"moodDescriptor":null,"isRefinement":true,"refinementInstruction":"anchor on black top, explore different bottoms and shoes"}
 - "Can you suggest something else in top with white skirt or trousers" (after pink top was recommended) →
-  {"messageType":"outfit_request","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{"bottom":{"color":"white","subCategory":null,"pattern":null}},"resetSlots":["top"],"excludeConstraints":[{"slot":"top","attribute":"color","value":"pink"}],"moodDescriptor":null,"isRefinement":true,"refinementInstruction":"suggest different top other than pink with white skirt or trousers"}
-- "actually make the top red instead" →
-  {"messageType":"outfit_request","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{"top":{"color":"red","subCategory":null,"pattern":null}},"resetSlots":[],"excludeConstraints":[],"moodDescriptor":null,"isRefinement":true,"refinementInstruction":"change top color to red"}
-- "I want to feel powerful for my presentation, no heels though" →
-  {"messageType":"outfit_request","occasions":"office","formality":"formal","season":null,"weatherSuitability":null,"style":["formal"],"slotConstraints":{},"resetSlots":[],"excludeConstraints":[{"slot":"footwear","attribute":"subCategory","value":"heels"}],"moodDescriptor":"powerful and confident","isRefinement":false,"refinementInstruction":null}
+  {"messageType":"outfit_request","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{"bottom":{"color":"white","subCategory":null,"pattern":null}},"resetSlots":["top"],"requestedCount":3,"excludeConstraints":[{"slot":"top","attribute":"color","value":"pink"}],"moodDescriptor":null,"isRefinement":true,"refinementInstruction":"suggest different top other than pink with white skirt or trousers"}
+- "Give me just 1 quick casual look for a date" →
+  {"messageType":"outfit_request","occasions":"date","formality":"casual","season":null,"weatherSuitability":null,"style":[],"slotConstraints":{},"resetSlots":[],"requestedCount":1,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
 - "what is smart casual?" →
-  {"messageType":"fashion_question","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{},"resetSlots":[],"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
+  {"messageType":"fashion_question","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{},"resetSlots":[],"requestedCount":3,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
   `
 
   try {

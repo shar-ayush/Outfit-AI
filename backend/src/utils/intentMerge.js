@@ -40,6 +40,7 @@ export function mergeIntent(previousIntent, newIntent) {
     ),
 
     moodDescriptor: newIntent.moodDescriptor ?? previousIntent.moodDescriptor ?? null,
+    requestedCount: newIntent.requestedCount || previousIntent.requestedCount || 3,
 
     isRefinement:          true,
     refinementInstruction: newIntent.refinementInstruction,
