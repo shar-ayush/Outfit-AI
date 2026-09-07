@@ -68,7 +68,7 @@ export default function RegisterScreen() {
           <View style={styles.titleBlock}>
             <Text variant="displayLg">Create your account</Text>
             <Text variant="bodyMd" color="secondary" style={styles.subtitle}>
-              Join the exclusive digital atelier.
+              Join the exclusive digital wardrobe.
             </Text>
           </View>
 

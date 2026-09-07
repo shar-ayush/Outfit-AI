@@ -32,8 +32,11 @@ import ClothStats from '@/components/cloth/ClothStats';
 import { useClothItem, useToggleAvailability, useArchiveCloth, useDeleteClothPermanent } from '@/hooks/useWardrobe';
 import { useItemWearHistory } from '@/hooks/useWearLogs';
 import { useUIStore } from '@/stores';
-import { formatRelativeDate } from '@/utils/dateUtils';
+import { COLOR_HEX_MAP, getClothColorHex } from '@/constants/categories';
 import { colors, spacing, radius } from '@/theme';
+
+
+
 
 const ATTRIBUTE_ROWS = [
   { key: 'fabric', label: 'Fabric' },
@@ -111,45 +114,77 @@ export default function ItemDetailScreen() {
 
         <View style={styles.content}>
           <View style={styles.colorRow}>
-            <View style={[styles.colorDot, { backgroundColor: cloth.color?.hex || colors.primary }]} />
+            {(() => {
+              const colorDotHex = getClothColorHex(cloth.color, colors.surfaceContainerHigh);
+
+              const isLightColor =
+                colorDotHex?.toLowerCase() === '#ffffff' ||
+                colorDotHex?.toLowerCase() === '#fff' ||
+                colorDotHex?.toLowerCase() === '#fffdd0' ||
+                colorDotHex?.toLowerCase() === '#f5f5dc';
+
+              return (
+                <View
+                  style={[
+                    styles.colorDot,
+                    { backgroundColor: colorDotHex },
+                    isLightColor && {
+                      borderColor: colors.outlineVariant,
+                      borderWidth: 1,
+                    },
+                  ]}
+                />
+              );
+            })()}
             <Text variant="bodyMd" color="secondary" style={styles.colorLabel}>
               {cloth.color?.primary?.toUpperCase()}
             </Text>
           </View>
 
+
+
           <Text variant="displayLg">
             {cloth.name || `${cloth.subCategory || cloth.category}`}
           </Text>
 
-          <View style={styles.tagsRow}>
-            {cloth.formality && <Tag label={cloth.formality} variant="static" />}
-            {(cloth.style || []).slice(0, 2).map((s) => (
-              <Tag key={s} label={s} variant="static" style={styles.tagSpacing} />
-            ))}
-          </View>
+          {/* Deduplicated Style & Formality Tags */}
+          {(() => {
+            const displayTags = [cloth.formality, ...(cloth.style || [])]
+              .filter(Boolean)
+              .reduce((acc, tag) => {
+                const trimmed = tag.trim();
+                if (!acc.some((existing) => existing.toLowerCase() === trimmed.toLowerCase())) {
+                  acc.push(trimmed);
+                }
+                return acc;
+              }, []);
 
-          <View style={styles.statsSection}>
-            <ClothStats cloth={cloth} />
-          </View>
+            return displayTags.length > 0 ? (
+              <View style={styles.tagsRow}>
+                {displayTags.map((tag) => (
+                  <Tag key={tag} label={tag} variant="static" />
+                ))}
+              </View>
+            ) : null;
+          })()}
+
+
+          
 
           <View style={styles.actionsRow}>
-            {/* <Button
-              variant={cloth.isAvailable ? 'secondary' : 'primary'}
-              icon="washing-machine"
-              onPress={handleToggleAvailability}
-              loading={toggleAvailability.isPending}
-              fullWidth={false}
+            <Button
+              variant="primary"
+              icon="creation"
+              onPress={() =>
+                router.push({
+                  pathname: '/(modals)/try-on',
+                  params: { clothId: cloth._id },
+                })
+              }
               style={styles.actionFlex}
             >
-              {cloth.isAvailable ? 'Mark In Laundry' : 'Mark Available'}
+              Virtual Try-On
             </Button>
-            <Button
-              variant="secondary"
-              icon="archive-outline"
-              size="icon"
-              onPress={() => setArchiveConfirmOpen(true)}
-              fullWidth={false}
-            /> */}
             <Button
               variant="secondary"
               icon="trash-can-outline"
@@ -158,6 +193,7 @@ export default function ItemDetailScreen() {
               fullWidth={false}
             />
           </View>
+
 
           <View style={styles.attributesSection}>
             <Text variant="headlineSm" style={styles.sectionTitle}>Attributes</Text>
@@ -188,6 +224,10 @@ export default function ItemDetailScreen() {
                 </Text>
               </View>
             )}
+          </View>
+
+          <View style={styles.statsSection}>
+            <ClothStats cloth={cloth} />
           </View>
 
           {cloth.aiTagged && (
@@ -298,9 +338,14 @@ const styles = StyleSheet.create({
   content: { padding: spacing.gutter },
   colorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.stackSm },
   colorDot: { width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: colors.outlineVariant },
-  colorLabel: { marginLeft: spacing.stackSm, letterSpacing: 1 },
-  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.stackSm, marginBottom: spacing.stackLg },
-  tagSpacing: { marginLeft: spacing.stackSm },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.inlineSm,
+    marginTop: spacing.stackSm,
+    marginBottom: spacing.stackLg,
+  },
+
   statsSection: { marginBottom: spacing.stackLg },
   actionsRow: { flexDirection: 'row', gap: spacing.stackSm, marginBottom: spacing.stackLg },
   actionFlex: { flex: 1 },

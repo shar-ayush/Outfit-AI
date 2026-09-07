@@ -35,8 +35,10 @@ export async function uploadSingleCloth(userId, imageBuffer, mimeType, extraData
     color: {
       primary:     metadata.color?.primary,
       secondary:   metadata.color?.secondary || [],
+      hex:         metadata.color?.hex || null,
       colorFamily: metadata.color?.colorFamily,
     },
+
     pattern:            metadata.pattern,
     fabric:             metadata.fabric,
     fit:                metadata.fit,
@@ -160,8 +162,10 @@ export async function uploadBulkClothes(userId, imageFiles) {
           color: {
             primary:     metadata.color?.primary,
             secondary:   metadata.color?.secondary || [],
+            hex:         metadata.color?.hex || null,
             colorFamily: metadata.color?.colorFamily,
           },
+
           pattern:            metadata.pattern,
           fabric:             metadata.fabric,
           fit:                metadata.fit,

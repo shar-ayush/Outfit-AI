@@ -84,7 +84,7 @@ export default function LoginScreen() {
                 Welcome back
               </Text>
               <Text variant="bodyLg" color="secondary" style={styles.subtitle}>
-                Log in to access your digital atelier.
+                Log in to access your digital wardrobe.
               </Text>
             </View>
 
@@ -127,7 +127,7 @@ export default function LoginScreen() {
               )}
             />
 
-            <View style={styles.optionsRow}>
+            {/* <View style={styles.optionsRow}>
               <Pressable style={styles.rememberRow} onPress={() => setRememberMe((v) => !v)}>
                 <MaterialCommunityIcons
                   name={rememberMe ? 'checkbox-marked' : 'checkbox-blank-outline'}
@@ -148,7 +148,7 @@ export default function LoginScreen() {
                   Forgot password?
                 </Text>
               </Pressable>
-            </View>
+            </View> */}
 
             {submitError && (
               <Text variant="bodyMd" color="error" style={styles.submitError}>
@@ -161,7 +161,7 @@ export default function LoginScreen() {
             </Button>
 
             <View style={styles.footer}>
-              <Text variant="bodyMd" color="secondary">
+              <Text variant="titleMd" color="secondary">
                 New here?{' '}
               </Text>
               <Pressable onPress={() => router.push('/(auth)/register')}>

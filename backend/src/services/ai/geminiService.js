@@ -26,8 +26,10 @@ Return ONLY a valid JSON object with exactly this structure:
   "color": {
     "primary": string (most dominant color, use simple names: "white", "black", "navy", "beige", "olive", "red", "pink", "grey", "brown", "camel", "burgundy", "light blue", "dark blue", "cream", "orange", "yellow", "purple", "green"),
     "secondary": array of strings (other visible colors, max 2),
+    "hex": string (precise 6-character hex color code representing the true, sampled shade of the dominant fabric, e.g. "#2E4057", always starting with #),
     "colorFamily": string (broader family: "neutral", "blue", "red", "green", "earth", "pastel")
   },
+
   "pattern": one of ["solid", "stripe", "check", "floral", "graphic", "abstract", "animal_print"],
   "fabric": string (e.g. "cotton", "linen", "denim", "wool", "polyester", "silk", "leather", "synthetic"),
   "fit": one of ["slim", "regular", "oversized", "relaxed", "tailored", "cropped"],
@@ -58,7 +60,19 @@ Example embeddingText: "A slim-fit navy blue formal dress shirt in cotton fabric
       throw new ApiError(422, 'Gemini could not extract valid metadata from this image')
     }
 
+    // Sanitize hex if returned
+    if (parsed.color?.hex && typeof parsed.color.hex === 'string') {
+      let h = parsed.color.hex.trim()
+      if (!h.startsWith('#')) h = `#${h}`
+      if (/^#[0-9A-Fa-f]{6}$/.test(h)) {
+        parsed.color.hex = h.toUpperCase()
+      } else {
+        delete parsed.color.hex
+      }
+    }
+
     return parsed
+
   } catch (error) {
     if (error instanceof ApiError) throw error
     if (error instanceof SyntaxError) {
@@ -97,6 +111,7 @@ Each object must follow this exact schema:
   "color": {
     "primary": string,
     "secondary": array of strings,
+    "hex": string (precise 6-character hex code of the dominant fabric color, e.g. "#2E4057", starting with #),
     "colorFamily": string
   },
   "pattern": one of ["solid", "stripe", "check", "floral", "graphic", "abstract", "animal_print"],
@@ -124,7 +139,20 @@ Return ONLY the JSON array. No explanation. No markdown.
       throw new ApiError(422, 'Batch extraction did not return an array')
     }
 
+    parsed.forEach((item) => {
+      if (item.color?.hex && typeof item.color.hex === 'string') {
+        let h = item.color.hex.trim()
+        if (!h.startsWith('#')) h = `#${h}`
+        if (/^#[0-9A-Fa-f]{6}$/.test(h)) {
+          item.color.hex = h.toUpperCase()
+        } else {
+          delete item.color.hex
+        }
+      }
+    })
+
     return parsed
+
   } catch (error) {
     if (error instanceof ApiError) throw error
     if (error instanceof SyntaxError) {

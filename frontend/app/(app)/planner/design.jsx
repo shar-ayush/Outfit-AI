@@ -32,9 +32,9 @@ import { parseLocalDate } from '@/utils/dateUtils';
 import { useWardrobeList } from '@/hooks/useWardrobe';
 import { useCreateOutfit } from '@/hooks/useOutfits';
 import { useCreatePlan } from '@/hooks/usePlans';
-import { useUIStore } from '@/stores';
-import { COLOR_HEX_MAP } from '@/constants/categories';
+import { COLOR_HEX_MAP, getClothColorHex } from '@/constants/categories';
 import { colors, spacing, radius, shadows } from '@/theme';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_GAP = spacing.stackSm;
@@ -354,10 +354,7 @@ export default function DesignOutfitScreen() {
               <View style={styles.grid}>
                 {displayedClothes.map((cloth) => {
                   const selectedCurrent = isItemSelected(cloth._id);
-                  const colorHex =
-                    cloth.color?.hex ||
-                    COLOR_HEX_MAP[cloth.color?.primary] ||
-                    colors.surfaceContainerHigh;
+                  const colorHex = getClothColorHex(cloth.color, colors.surfaceContainerHigh);
 
                   return (
                     <Pressable
@@ -690,10 +687,7 @@ export default function DesignOutfitScreen() {
               </Text>
               <View style={styles.paletteDots}>
                 {allSelectedItems.map((item, i) => {
-                  const hex =
-                    item.color?.hex ||
-                    COLOR_HEX_MAP[item.color?.primary] ||
-                    colors.surfaceContainerHigh;
+                  const hex = getClothColorHex(item.color, colors.surfaceContainerHigh);
                   return (
                     <View
                       key={item._id || i}

@@ -1,61 +1,83 @@
 // app/(auth)/welcome.jsx
 //
-// Matches welcome_screen/code.html: full-bleed editorial photo collage
-// background, dark gradient overlay (for text legibility), brand + tagline
-// near the top, two full-width CTAs pinned to the bottom.
-//
-// NOTE ON THE BACKGROUND IMAGE: the Stitch export references a Google-
-// hosted AI-generated placeholder image (an editorial fashion collage).
-// It's used here as-is since it's a real, reachable URL and matches the
-// intended art direction exactly — swap `COLLAGE_IMAGE_URL` for your own
-// production asset (bundled locally under assets/images/onboarding/ per
-// the folder plan) before shipping.
+// Minimal, editorial welcome screen matching Haute Systems design language.
+// Clean typography, understated prestige badge, and clear calls to action.
 
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Text from '@/components/common/Text';
 import Button from '@/components/common/Button';
-import { colors, spacing } from '@/theme';
+import { colors, spacing, radius } from '@/theme';
 
-const COLLAGE_IMAGE_URL =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuANgDWdqNtUSyq8DSUr6f7j5jIf6xKqitrgIykapLZjB4ZQEAO8t12iD9NWLNEsy7CHnstQrtKz29JDoN-JK0Zo4IDFH_eEIEbvvhQKmsPnYUGdaBmSlxGuinv6WT2LEmKj2LVby2SxoXUTQqJEDwr0LkehkkY1qdgnkZXoyasoGHT4ocuxzvy6YxwWmo9ccaQ0pEj6CKeDxbA19Qd3RWCkB9SFKae48C3nCcgxul_R_6ZlLmRcmU4vEA';
+const HIGHLIGHTS = [
+  { icon: 'creation', label: 'AI Virtual Try-On' },
+  { icon: 'hanger', label: 'Smart Wardrobe' },
+  { icon: 'auto-fix', label: 'Personal Stylist' },
+];
 
 export default function WelcomeScreen() {
   const router = useRouter();
 
   return (
     <View style={styles.root}>
-      <Image
-        source={{ uri: COLLAGE_IMAGE_URL }}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        transition={400}
-      />
-      <LinearGradient
-        colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.75)']}
-        locations={[0, 0.5, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-
       <SafeAreaView style={styles.content}>
-        <View style={styles.topSection}>
-          <Text variant="displayLg" color="onPrimary" style={styles.wordmark}>
+        {/* Top spacer */}
+        <View style={styles.topSpacer} />
+
+        {/* Center Editorial Brand Section */}
+        <View style={styles.brandSection}>
+          <View style={styles.iconEmblem}>
+            <MaterialCommunityIcons name="hanger" size={32} color={colors.primary} />
+            <View style={styles.goldDot} />
+          </View>
+
+          <Text variant="displayLg" style={styles.wordmark}>
             OUTFIT AI
           </Text>
-          <Text variant="bodyLg" color="surfaceVariant" style={styles.tagline}>
-            Your personal AI stylist.
+
+          <Text variant="bodyLg" color="secondary" style={styles.tagline}>
+            Your wardrobe, curated and styled with intelligence.
           </Text>
+
+          {/* Minimal Feature Highlights */}
+          <View style={styles.highlightsWrap}>
+            {HIGHLIGHTS.map((item) => (
+              <View key={item.label} style={styles.highlightPill}>
+                <MaterialCommunityIcons
+                  name={item.icon}
+                  size={14}
+                  color={colors.goldAccent}
+                />
+                <Text variant="labelCaps" color="secondary" style={styles.highlightText}>
+                  {item.label}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
 
-        <View style={styles.actions}>
-          <Button onPress={() => router.push('/(auth)/register')}>Get Started</Button>
-          <Button variant="secondary" onPress={() => router.push('/(auth)/login')} style={styles.loginButton}>
-            Login
-          </Button>
+        {/* Bottom Actions */}
+        <View style={styles.bottomSection}>
+          <View style={styles.actions}>
+            <Button onPress={() => router.push('/(auth)/register')} size="lg">
+              Get Started
+            </Button>
+            <Button
+              variant="secondary"
+              onPress={() => router.push('/(auth)/login')}
+              style={styles.loginButton}
+              size="lg"
+            >
+              Log In
+            </Button>
+          </View>
+
+          <Text variant="caption" color="secondary" style={styles.disclaimer}>
+            By continuing, you agree to our Terms & Privacy Policy.
+          </Text>
         </View>
       </SafeAreaView>
     </View>
@@ -63,17 +85,90 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000000' },
+  root: {
+    flex: 1,
+    backgroundColor: colors.surface,
+  },
   content: {
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: spacing.gutter,
     paddingBottom: spacing.stackLg,
-    paddingTop: 96,
   },
-  topSection: { alignItems: 'center' },
-  wordmark: { textAlign: 'center' },
-  tagline: { marginTop: spacing.stackSm, textAlign: 'center' },
-  actions: { width: '100%' },
-  loginButton: { marginTop: spacing.stackMd },
+  topSpacer: {
+    height: 32,
+  },
+  brandSection: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.stackSm,
+  },
+  iconEmblem: {
+    width: 68,
+    height: 68,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: colors.surfaceContainerHigh,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.stackLg,
+  },
+  goldDot: {
+    position: 'absolute',
+    top: 14,
+    right: 18,
+    width: 7,
+    height: 7,
+    borderRadius: radius.circle,
+    backgroundColor: colors.goldAccent,
+  },
+  wordmark: {
+    letterSpacing: 3,
+    textAlign: 'center',
+    fontFamily: 'Inter_700Bold',
+    color: colors.onSurface,
+  },
+  tagline: {
+    marginTop: spacing.stackSm,
+    textAlign: 'center',
+    maxWidth: 280,
+    lineHeight: 22,
+  },
+  highlightsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: spacing.stackXl,
+  },
+  highlightPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceContainerLowest,
+    borderWidth: 1,
+    borderColor: colors.surfaceContainerHigh,
+  },
+  highlightText: {
+    letterSpacing: 0.5,
+    fontSize: 10,
+  },
+  bottomSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  actions: {
+    width: '100%',
+  },
+  loginButton: {
+    marginTop: spacing.stackMd,
+  },
+  disclaimer: {
+    marginTop: spacing.stackLg,
+    textAlign: 'center',
+    fontSize: 11,
+  },
 });
