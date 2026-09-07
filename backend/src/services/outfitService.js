@@ -22,8 +22,10 @@ import mongoose from 'mongoose'
 export async function getOutfitRecommendations({
   userId,
   query,
-  sessionId  = null,
-  count      = 3,
+  sessionId = null,
+  session = null,        // NEW — allows caller (stylistService) to pass an already-loaded session
+  precomputedIntent = null, // NEW — allows caller to skip a redundant extractIntent call
+  count = 3,
   weatherContext = null,
 }) {
   const user = await (await import('../models/User.js')).default
@@ -31,28 +33,28 @@ export async function getOutfitRecommendations({
     .select('learningPhase')
     .lean()
 
-  // Step 1 — extract intent from natural language
-  // if sessionId exists load conversation history for follow-up context
-  let conversationHistory = []
-  let session             = null
-
-  if (sessionId) {
-    session             = await ConversationSession.findById(sessionId)
-    conversationHistory = session?.messages || []
+  // If session wasn't passed in (e.g. direct /outfits/suggest call, not via stylist chat),
+  // load it here exactly as before
+  if (!session && sessionId) {
+    session = await ConversationSession.findById(sessionId)
   }
+  const conversationHistory = session?.messages || []
 
-  const intent = await extractIntent(query, conversationHistory)
+  // Use the precomputed intent if the caller already extracted+merged one
+  // (stylistService does this now); otherwise extract fresh (still used
+  // by the direct /outfits/suggest endpoint, which has no router step)
+  const intent = precomputedIntent || await extractIntent(query, conversationHistory)
 
   // Inject weather into intent if provided
   if (weatherContext) {
     if (!intent.weatherSuitability) {
-      if (weatherContext.temperature > 28)      intent.weatherSuitability = 'hot'
+      if (weatherContext.temperature > 28) intent.weatherSuitability = 'hot'
       else if (weatherContext.temperature < 15) intent.weatherSuitability = 'cold'
-      else                                       intent.weatherSuitability = 'mild'
+      else intent.weatherSuitability = 'mild'
     }
     if (!intent.season) {
       const month = new Date().getMonth()
-      if (month >= 2  && month <= 4) intent.season = 'spring'
+      if (month >= 2 && month <= 4) intent.season = 'spring'
       else if (month >= 5 && month <= 7) intent.season = 'summer'
       else if (month >= 8 && month <= 10) intent.season = 'autumn'
       else intent.season = 'winter'
@@ -64,8 +66,8 @@ export async function getOutfitRecommendations({
 
   if (candidatePool.isEmpty) {
     return {
-      outfits:    [],
-      message:    'Your wardrobe needs more items. Upload at least tops, bottoms and shoes.',
+      outfits: [],
+      message: 'Your wardrobe needs more items. Upload at least tops, bottoms and shoes.',
       sessionId,
       intent,
     }
@@ -78,18 +80,18 @@ export async function getOutfitRecommendations({
   const rankedOutfits = await rankCandidates({
     candidatePool,
     userId,
-    userQuery:          query,
+    userQuery: query,
     intent,
     conversationHistory,
     shownItemIds,
-    learningPhase:      user?.learningPhase || 0,
+    learningPhase: user?.learningPhase || 0,
     count,
   })
 
   if (rankedOutfits.length === 0) {
     return {
-      outfits:  [],
-      message:  'Could not generate combinations. Try a different query.',
+      outfits: [],
+      message: 'Could not generate combinations. Try a different query.',
       sessionId,
       intent,
     }
@@ -102,50 +104,55 @@ export async function getOutfitRecommendations({
       const savedOutfit = await Outfit.create({
         userId,
         items: outfit.items.map((item, idx) => ({
-          clothId:  item._id,
-          role:     item.category,
+          clothId: item._id,
+          role: item.category,
           position: idx,
         })),
-        occasion:   intent.occasions,
-        formality:  intent.formality,
-        style:      intent.style || [],
-        source:     'recommendation',
+        occasion: intent.occasions,
+        formality: intent.formality,
+        style: intent.style || [],
+        source: 'recommendation',
         compatibilityScore: outfit.score?.total,
         scoreBreakdown: {
-          color:     outfit.score?.color,
-          style:     outfit.score?.style,
-          formality: outfit.score?.formality,
-          occasion:  outfit.score?.occasion,
-          pattern:   outfit.score?.pattern,
+          harmony: outfit.score?.harmony,
+          vectorSimilarity: outfit.score?.vectorSimilarity,
+          constraintMatch: outfit.score?.constraintMatch,
+          pairsScored: outfit.score?.pairsScored,
         },
         outfitName: outfit.outfitName,
         whyItWorks: outfit.whyItWorks,
         stylingTip: outfit.stylingTip,
-        vibe:       outfit.vibe,
+        vibe: outfit.vibe,
       })
 
-      // Save recommendation record with full score breakdown
+      // Save recommendation record with full score breakdown,
+      // verification result, and retrieval trail
       const recommendation = await Recommendation.create({
         userId,
         outfitId: savedOutfit._id,
         context: {
-          occasion:    intent.occasions,
-          formality:   intent.formality,
-          season:      intent.season,
-          dayOfWeek:   new Date().getDay(),
+          occasion: intent.occasions,
+          formality: intent.formality,
+          season: intent.season,
+          dayOfWeek: new Date().getDay(),
           query,
           temperature: weatherContext?.temperature,
-          condition:   weatherContext?.condition,
+          condition: weatherContext?.condition,
         },
         scores: {
-          final:             outfit.score?.total,
-          compatibility:     outfit.score?.algorithm,
-          personalization:   outfit.score?.personalization,
-          novelty:           outfit.score?.noveltyPenalty,
+          final: outfit.score?.total,
+          compatibility: outfit.score?.algorithm,
+          personalization: outfit.score?.personalization,
+          novelty: outfit.score?.noveltyPenalty,
+          vectorSimilarity: outfit.score?.vectorSimilarity,
+          constraintMatch: outfit.score?.constraintMatch,
         },
+        verification: outfit.verification || null,
+        substitutionNote: outfit.substitutionNote || null,
+        retrievalTrail: candidatePool.retrievalTrail || [],
         position,
         learningPhase: user?.learningPhase || 0,
-        status:  'shown',
+        status: 'shown',
         shownAt: new Date(),
       })
 
@@ -153,11 +160,11 @@ export async function getOutfitRecommendations({
       await RecommendationEvent.create({
         userId,
         recommendationId: recommendation._id,
-        outfitId:         savedOutfit._id,
-        eventType:        'shown',
+        outfitId: savedOutfit._id,
+        eventType: 'shown',
         position,
         context: {
-          occasion:  intent.occasions,
+          occasion: intent.occasions,
           dayOfWeek: new Date().getDay(),
           temperature: weatherContext?.temperature,
         },
@@ -166,16 +173,16 @@ export async function getOutfitRecommendations({
 
       return {
         ...outfit,
-        outfitId:         savedOutfit._id.toString(),
+        outfitId: savedOutfit._id.toString(),
         recommendationId: recommendation._id.toString(),
-        isSaved:          Boolean(savedOutfit.isSaved),
-        items:            outfit.items.map(item => ({
-          _id:        (item._id?.toString ? item._id.toString() : item._id),
-          imageUrl:   item.imageUrl,
-          category:   item.category,
-          color:      item.color,
-          style:      item.style,
-          formality:  item.formality,
+        isSaved: Boolean(savedOutfit.isSaved),
+        items: outfit.items.map(item => ({
+          _id: (item._id?.toString ? item._id.toString() : item._id),
+          imageUrl: item.imageUrl,
+          category: item.category,
+          color: item.color,
+          style: item.style,
+          formality: item.formality,
           subCategory: item.subCategory,
         })),
       }
@@ -190,45 +197,47 @@ export async function getOutfitRecommendations({
 
   if (session) {
     session.messages.push(
-      { role: 'user',      content: query },
+      { role: 'user', content: query },
       {
-        role:     'assistant',
-        content:  savedOutfits.map(o => o.outfitName).join(', '),
+        role: 'assistant',
+        content: savedOutfits.map(o => o.outfitName).join(', '),
         outfitIds: savedOutfits.map(o => o.outfitId),
       }
     )
-    session.messages    = session.messages.slice(-20)
+    session.messages = session.messages.slice(-20)
     session.shownItemIds = allShownItemIds.slice(-100)
-    session.lastIntent   = intent
+    session.lastIntent = intent
     await session.save()
   } else {
     // Create new session
     const newSession = await ConversationSession.create({
       userId,
       messages: [
-        { role: 'user',      content: query },
+        { role: 'user', content: query },
         {
-          role:     'assistant',
-          content:  savedOutfits.map(o => o.outfitName).join(', '),
+          role: 'assistant',
+          content: savedOutfits.map(o => o.outfitName).join(', '),
           outfitIds: savedOutfits.map(o => o.outfitId),
         },
       ],
       shownItemIds: allShownItemIds.slice(-100),
-      lastIntent:   intent,
+      lastIntent: intent,
     })
     session = newSession
   }
 
   return {
-    outfits:   savedOutfits,
+    outfits: savedOutfits,
     sessionId: session._id.toString(),
     intent,
     meta: {
       candidatePoolSize: Object.values(candidatePool)
         .filter(Array.isArray)
         .reduce((sum, arr) => sum + arr.length, 0),
-      wasRelaxed:   candidatePool.wasRelaxed,
-      relaxLevel:   candidatePool.relaxLevel,
+      wasRelaxed:    candidatePool.wasRelaxed,
+      retrievalMode: candidatePool.agenticLoopUsed ? 'agentic' : 'fixed_filter_fallback',
+      relaxLevel:    candidatePool.relaxLevel ?? null, // only meaningful on the fallback path now
+      toolCallCount: candidatePool.retrievalTrail?.length ?? 0,
       learningPhase: user?.learningPhase || 0,
     },
   }
@@ -244,18 +253,18 @@ export async function recordOutfitAction({
   outfitId,
   recommendationId,
   eventType,
-  rating   = null,
+  rating = null,
   feedback = null,
-  context  = {},
+  context = {},
 }) {
   const outfit = await Outfit.findOne({ _id: outfitId, userId })
   if (!outfit) throw new ApiError(404, 'Outfit not found')
- 
+
   // Save outfit if action is save
   if (eventType === 'saved') {
     await Outfit.findByIdAndUpdate(outfitId, { isSaved: true })
   }
- 
+
   // processSignal now handles RecommendationEvent creation + Recommendation
   // status update itself when recommendationId is provided — no need to
   // duplicate that here.
@@ -267,7 +276,7 @@ export async function recordOutfitAction({
     context,
     recommendationId,
   })
- 
+
   return { success: true, eventType, outfitId }
 }
 
@@ -281,14 +290,14 @@ export async function getSavedOutfits(userId, query = {}) {
 
   const [outfits, total] = await Promise.all([
     Outfit.find({ userId, isSaved: true, isArchived: false })
-          .populate({
-            path:   'items.clothId',
-            select: 'imageUrl category color style formality subCategory',
-          })
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(parseInt(limit))
-          .lean(),
+      .populate({
+        path: 'items.clothId',
+        select: 'imageUrl category color style formality subCategory',
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean(),
     Outfit.countDocuments({ userId, isSaved: true, isArchived: false }),
   ])
 
@@ -296,7 +305,7 @@ export async function getSavedOutfits(userId, query = {}) {
     outfits,
     pagination: {
       total,
-      page:       parseInt(page),
+      page: parseInt(page),
       totalPages: Math.ceil(total / parseInt(limit)),
     },
   }
@@ -309,7 +318,7 @@ export async function getSavedOutfits(userId, query = {}) {
 export async function getOutfitById(outfitId, userId) {
   const outfit = await Outfit.findOne({ _id: outfitId, userId })
     .populate({
-      path:   'items.clothId',
+      path: 'items.clothId',
       select: '-embedding',
     })
     .lean()
@@ -326,7 +335,7 @@ export async function getRecommendationByOutfitId(outfitId, userId) {
   const recommendation = await Recommendation.findOne({ outfitId, userId })
     .sort({ createdAt: -1 })
     .lean()
- 
+
   return recommendation // null if this outfit was user-created, not suggested
 }
 
@@ -577,4 +586,4 @@ export async function refreshDailyRecommendation({ userId, date, weatherContext 
     message: result.message || 'Could not generate a new outfit suggestion.',
     sessionId: result.sessionId?.toString() || null,
   }
-}
+}

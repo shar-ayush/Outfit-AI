@@ -197,7 +197,8 @@ export async function uploadBulkClothes(userId, imageFiles) {
     // Collect results
     clothDocs.forEach((result, j) => {
       if (result.status === 'fulfilled') {
-        results.success.push(result.value)
+        const item = result.value?.toObject ? result.value.toObject() : result.value
+        results.success.push(item)
       } else {
         results.failed.push({
           index: i + j,

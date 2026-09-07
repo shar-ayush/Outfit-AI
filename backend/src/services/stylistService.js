@@ -1,12 +1,41 @@
 import ConversationSession from '../models/ConversationSession.js'
 import { getOutfitRecommendations } from './outfitService.js'
+import { extractIntent } from './ai/intentService.js'
+import { mergeIntent } from '../utils/intentMerge.js'
 import { getGenerativeModel } from '../config/gemini.js'
 import ApiError from '../utils/ApiError.js'
 
 // ─────────────────────────────────────────────
+// Builds an honest chat message that surfaces any
+// constraint substitutions the pipeline made, rather
+// than a generic "here are your outfits" line.
+// This is the payoff of Steps 5/6 — the data existed,
+// it just wasn't being said out loud until now.
+// ─────────────────────────────────────────────
+
+function buildOutfitResponseMessage(outfits) {
+  if (outfits.length === 0) return null
+
+  const base = `Here are ${outfits.length} outfit${outfits.length > 1 ? 's' : ''} based on your wardrobe.`
+
+  const substitutions = outfits
+    .map((outfit, i) => ({ index: i, note: outfit.substitutionNote }))
+    .filter(o => o.note)
+
+  if (substitutions.length === 0) return base
+
+  const notes = substitutions
+    .map(s => `Outfit ${s.index + 1}: ${s.note}`)
+    .join(' ')
+
+  return `${base} A couple of notes on fit to your request — ${notes}`
+}
+
+// ─────────────────────────────────────────────
 // Handle a stylist chat message
-// The stylist chat IS the outfit recommendation
-// system — same pipeline, with conversation memory
+// Step 1 update: routing + intent merge now happen HERE,
+// in a single extractIntent call, instead of a separate
+// keyword-based classifyMessage() step.
 // ─────────────────────────────────────────────
 
 export async function handleStylistMessage({
@@ -15,20 +44,33 @@ export async function handleStylistMessage({
   sessionId    = null,
   weatherContext = null,
 }) {
-  // Detect if this is a pure question vs an outfit request
-  const isOutfitRequest = await classifyMessage(message)
+  // Load session once — reused for both branches below
+  let session = null
+  if (sessionId) {
+    session = await ConversationSession.findById(sessionId)
+  }
 
-  if (!isOutfitRequest) {
-    // Pure fashion question — answer without generating outfits
-    return handleFashionQuestion({ userId, message, sessionId })
+  const conversationHistory = session?.messages || []
+
+  // Single Gemini call — classifies AND extracts intent
+  const rawIntent = await extractIntent(message, conversationHistory)
+
+  // Merge onto prior session intent if this is a refinement
+  const intent = mergeIntent(session?.lastIntent, rawIntent)
+
+  if (intent.messageType === 'fashion_question') {
+    return handleFashionQuestion({ userId, message, session, sessionId })
   }
 
   // Outfit request — run full recommendation pipeline
-  // Session management handled inside getOutfitRecommendations
+  // Pass the already-extracted+merged intent down so
+  // getOutfitRecommendations doesn't call Gemini again
   const result = await getOutfitRecommendations({
     userId,
     query:   message,
     sessionId,
+    session,
+    precomputedIntent: intent,
     count:   3,
     weatherContext,
   })
@@ -39,25 +81,18 @@ export async function handleStylistMessage({
     sessionId: result.sessionId,
     intent:    result.intent,
     message:   result.outfits.length > 0
-      ? `Here are ${result.outfits.length} outfits based on your wardrobe.`
+      ? buildOutfitResponseMessage(result.outfits)
       : result.message,
   }
 }
 
 // ─────────────────────────────────────────────
 // Answer a general fashion question
-// without generating outfit combinations
-// e.g. "What is smart casual?" or "How do I care for linen?"
+// Unchanged in logic — just accepts an already-loaded session now
 // ─────────────────────────────────────────────
 
-async function handleFashionQuestion({ userId, message, sessionId }) {
+async function handleFashionQuestion({ userId, message, session, sessionId }) {
   const model = getGenerativeModel()
-
-  // Load session for conversation context
-  let session = null
-  if (sessionId) {
-    session = await ConversationSession.findById(sessionId)
-  }
 
   const history = session?.messages.slice(-6) || []
   const historyText = history
@@ -78,7 +113,6 @@ Keep your answer under 150 words. Be conversational and friendly.
   const result = await model.generateContent(prompt)
   const answer = result.response.text()
 
-  // Update session with this exchange
   if (session) {
     session.messages.push(
       { role: 'user',      content: message },
@@ -87,7 +121,6 @@ Keep your answer under 150 words. Be conversational and friendly.
     session.messages = session.messages.slice(-20)
     await session.save()
   } else if (sessionId) {
-    // Session ID provided but not found — create new
     session = await ConversationSession.create({
       userId,
       messages: [
@@ -103,42 +136,6 @@ Keep your answer under 150 words. Be conversational and friendly.
     outfits:   [],
     sessionId: session?._id || sessionId,
   }
-}
-
-// ─────────────────────────────────────────────
-// Classify whether a message is an outfit request
-// or a general fashion question
-// Keeps it simple — keyword based + Gemini fallback
-// ─────────────────────────────────────────────
-
-async function classifyMessage(message) {
-  const outfitKeywords = [
-    'wear', 'outfit', 'dress', 'suggest', 'recommend',
-    'what should i', 'what to wear', 'style me', 'look',
-    'going to', 'attending', 'interview', 'party', 'date',
-    'casual', 'formal', 'wedding', 'office', 'gym', 'college',
-    'more casual', 'something else', 'different', 'show me',
-  ]
-
-  const lower = message.toLowerCase()
-  const hasKeyword = outfitKeywords.some(kw => lower.includes(kw))
-
-  // Fast path — keyword match
-  if (hasKeyword) return true
-
-  // Short messages are likely follow-ups — treat as outfit requests
-  if (message.trim().split(' ').length <= 5) return true
-
-  // Fallback — pure questions usually start with 'what is', 'how', 'why', 'can you explain'
-  const questionPatterns = [
-    /^what is/i,
-    /^how (do|does|can|should)/i,
-    /^why (do|does|is)/i,
-    /^can you explain/i,
-    /^tell me about/i,
-  ]
-
-  return !questionPatterns.some(pattern => pattern.test(message.trim()))
 }
 
 // ─────────────────────────────────────────────
