@@ -14,6 +14,7 @@ import React, { useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { format } from 'date-fns';
+import { parseLocalDate } from '@/utils/dateUtils';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '@/components/common/Screen';
 import Text from '@/components/common/Text';
@@ -54,7 +55,7 @@ export default function DayDetailScreen() {
   const [candidates, setCandidates] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const dateObj = new Date(date);
+  const dateObj = parseLocalDate(date);
   const dateLabel = format(dateObj, 'EEEE, MMM d');
 
   const handleGenerate = () => {
@@ -188,8 +189,57 @@ export default function DayDetailScreen() {
             </View>
           )}
 
-          <Button variant="ghost" onPress={() => setMode('chooseOccasion')} style={styles.changeButton}>
+          <Button variant="ghost" onPress={() => setMode('changeOptions')} style={styles.changeButton}>
             Change Outfit
+          </Button>
+        </View>
+      )}
+
+      {plan && mode === 'changeOptions' && (
+        <View>
+          <Text variant="headlineSm" style={styles.emptyTitle}>Change outfit</Text>
+          <Text variant="bodyLg" color="secondary" style={styles.emptySubtitle}>
+            How would you like to update this look?
+          </Text>
+
+          <Pressable style={styles.optionCard} onPress={() => setMode('chooseOccasion')}>
+            <MaterialCommunityIcons name="creation" size={22} color={colors.goldAccent} />
+            <View style={styles.optionText}>
+              <Text variant="titleMd">Generate outfit for this day</Text>
+              <Text variant="bodyMd" color="secondary">
+                Let AI curate a look based on the weather and your style.
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.secondary} />
+          </Pressable>
+
+          <Pressable style={styles.optionCard} onPress={() => setPickerOpen(true)}>
+            <MaterialCommunityIcons name="bookmark-outline" size={22} color={colors.primary} />
+            <View style={styles.optionText}>
+              <Text variant="titleMd">Pick from saved outfits</Text>
+              <Text variant="bodyMd" color="secondary">
+                Choose from your saved collection.
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.secondary} />
+          </Pressable>
+
+          <Pressable
+            style={styles.optionCard}
+            onPress={() => router.push({ pathname: '/planner/design', params: { date } })}
+          >
+            <MaterialCommunityIcons name="hanger" size={22} color={colors.primary} />
+            <View style={styles.optionText}>
+              <Text variant="titleMd">Design from wardrobe</Text>
+              <Text variant="bodyMd" color="secondary">
+                Handpick items from your closet to build a custom look.
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.secondary} />
+          </Pressable>
+
+          <Button variant="ghost" onPress={() => setMode('view')} style={styles.changeButton}>
+            Cancel
           </Button>
         </View>
       )}
@@ -218,6 +268,20 @@ export default function DayDetailScreen() {
               <Text variant="titleMd">Pick from saved outfits</Text>
               <Text variant="bodyMd" color="secondary">
                 Choose from your saved collection.
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.secondary} />
+          </Pressable>
+
+          <Pressable
+            style={styles.optionCard}
+            onPress={() => router.push({ pathname: '/planner/design', params: { date } })}
+          >
+            <MaterialCommunityIcons name="hanger" size={22} color={colors.primary} />
+            <View style={styles.optionText}>
+              <Text variant="titleMd">Design from wardrobe</Text>
+              <Text variant="bodyMd" color="secondary">
+                Handpick items from your closet to build a custom look.
               </Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={20} color={colors.secondary} />

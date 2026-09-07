@@ -9,6 +9,7 @@ import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { isToday } from 'date-fns';
+import { parseLocalDate } from '@/utils/dateUtils';
 import Text from '@/components/common/Text';
 import { colors, radius, spacing } from '@/theme';
 
@@ -16,7 +17,7 @@ export default function WeekCalendar({ week = [], selectedDate, onSelectDate }) 
   return (
     <View style={styles.row}>
       {week.map((day) => {
-        const dateObj = new Date(day.date);
+        const dateObj = parseLocalDate(day.date);
         const today = isToday(dateObj);
         const selected = day.date === selectedDate;
         const thumbUri = day.plan?.outfitId?.items?.[0]?.clothId?.imageUrl;

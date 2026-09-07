@@ -59,13 +59,21 @@ export function computePairAffinity(signals) {
 // ─────────────────────────────────────────────
 
 export function normalizeFrequencyMap(freqMap) {
-  const entries = Object.entries(freqMap)
+  if (!freqMap) return {}
+
+  let entries = []
+  if (freqMap instanceof Map) {
+    entries = Array.from(freqMap.entries())
+  } else if (typeof freqMap === 'object') {
+    entries = Object.entries(freqMap)
+  }
+
   if (entries.length === 0) return {}
 
-  const total = entries.reduce((sum, [, v]) => sum + v, 0)
+  const total = entries.reduce((sum, [, v]) => sum + (Number(v) || 0), 0)
   if (total === 0) return {}
 
-  return Object.fromEntries(entries.map(([k, v]) => [k, v / total]))
+  return Object.fromEntries(entries.map(([k, v]) => [k, (Number(v) || 0) / total]))
 }
 
 // ─────────────────────────────────────────────
@@ -101,9 +109,9 @@ export async function fetchUserPreferences(userId) {
   const contextMap = {}
   for (const ctx of contextPrefs) {
     contextMap[ctx.contextKey] = {
-      colorWeights:   normalizeFrequencyMap(Object.fromEntries(ctx.colorFrequency)),
-      styleWeights:   normalizeFrequencyMap(Object.fromEntries(ctx.styleFrequency)),
-      patternWeights: normalizeFrequencyMap(Object.fromEntries(ctx.patternFrequency)),
+      colorWeights:   normalizeFrequencyMap(ctx.colorFrequency),
+      styleWeights:   normalizeFrequencyMap(ctx.styleFrequency),
+      patternWeights: normalizeFrequencyMap(ctx.patternFrequency),
       confidence:     ctx.confidence,
     }
   }

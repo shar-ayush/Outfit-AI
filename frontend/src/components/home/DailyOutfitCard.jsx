@@ -12,8 +12,9 @@
 // fact that isn't a distinguishing piece of data.
 
 import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Text from '@/components/common/Text';
 import Button from '@/components/common/Button';
 import Card from '@/components/common/Card';
@@ -28,6 +29,7 @@ export default function DailyOutfitCard({
   isLoading,
   isRefreshing,
   isActionLoading,
+  weatherNudge,
   onWornToday,
   onSave,
   onRefresh,
@@ -51,19 +53,26 @@ export default function DailyOutfitCard({
       ) : (
         <Card noPadding elevated>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.itemsRow}>
-            {outfit.items.map((item, i) => (
-              <View
-                key={item._id || i}
-                style={[styles.itemThumb, i < outfit.items.length - 1 && styles.itemThumbBorder]}
-              >
-                <Image source={{ uri: item.imageUrl }} style={styles.itemImage} contentFit="contain" />
-                <View style={styles.categoryChip}>
-                  <Text variant="caption" style={styles.categoryChipText}>
-                    {item.subCategory || item.category}
-                  </Text>
+            {(outfit.items || []).map((item, i) => {
+              const cloth = item?.clothId && typeof item.clothId === 'object' ? item.clothId : item;
+              const imageUrl = cloth?.imageUrl || item?.imageUrl;
+              const label = cloth?.subCategory || item?.subCategory || cloth?.category || item?.category;
+              return (
+                <View
+                  key={cloth?._id || item?._id || i}
+                  style={[styles.itemThumb, i < outfit.items.length - 1 && styles.itemThumbBorder]}
+                >
+                  <Image source={{ uri: imageUrl }} style={styles.itemImage} contentFit="contain" />
+                  {label && (
+                    <View style={styles.categoryChip}>
+                      <Text variant="caption" style={styles.categoryChipText}>
+                        {label}
+                      </Text>
+                    </View>
+                  )}
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </ScrollView>
 
           <View style={styles.infoSection}>
@@ -83,6 +92,31 @@ export default function DailyOutfitCard({
                 <Text variant="titleSm">Why it works: </Text>
                 {outfit.whyItWorks}
               </Text>
+            )}
+
+            {weatherNudge && (
+              <Pressable
+                style={styles.weatherNudgeBanner}
+                onPress={onRefresh}
+                android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
+              >
+                <View style={styles.weatherNudgeIconContainer}>
+                  <MaterialCommunityIcons
+                    name={weatherNudge.icon || 'weather-cloudy-alert'}
+                    size={18}
+                    color={colors.tertiary}
+                  />
+                </View>
+                <View style={styles.weatherNudgeTextContainer}>
+                  <Text variant="labelMd" style={styles.weatherNudgeTitle}>
+                    Weather Update
+                  </Text>
+                  <Text variant="bodySm" color="secondary" style={styles.weatherNudgeMessage}>
+                    {weatherNudge.message}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="refresh" size={18} color={colors.primary} />
+              </Pressable>
             )}
 
             <View style={styles.actionsRow}>
@@ -140,6 +174,37 @@ const styles = StyleSheet.create({
   badgeRow: { flexDirection: 'row', marginBottom: spacing.stackMd },
   badgeSpacing: { marginLeft: spacing.stackSm },
   whyItWorks: { marginBottom: spacing.stackLg },
+  weatherNudgeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radius.DEFAULT,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    paddingVertical: spacing.stackSm,
+    paddingHorizontal: spacing.stackMd,
+    marginBottom: spacing.stackMd,
+  },
+  weatherNudgeIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceContainerHigh,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.stackSm,
+  },
+  weatherNudgeTextContainer: {
+    flex: 1,
+    marginRight: spacing.stackSm,
+  },
+  weatherNudgeTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    color: colors.onSurface,
+  },
+  weatherNudgeMessage: {
+    marginTop: 1,
+  },
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackSm },
   actionButtonFlex: { flex: 1 },
 });

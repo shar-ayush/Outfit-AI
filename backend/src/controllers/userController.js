@@ -201,14 +201,15 @@ export const getPreferences = asyncHandler(async (req, res) => {
 
   // Context summaries — what style per occasion
   const contextSummaries = contextPrefs.map(ctx => {
-    // Get top 3 colors and styles
-    const colorEntries = Object.entries(
-      Object.fromEntries(ctx.colorFrequency || [])
-    ).sort((a, b) => b[1] - a[1]).slice(0, 3)
+    const toEntries = (val) => {
+      if (!val) return []
+      if (val instanceof Map) return Array.from(val.entries())
+      if (typeof val === 'object') return Object.entries(val)
+      return []
+    }
 
-    const styleEntries = Object.entries(
-      Object.fromEntries(ctx.styleFrequency || [])
-    ).sort((a, b) => b[1] - a[1]).slice(0, 3)
+    const colorEntries = toEntries(ctx.colorFrequency).sort((a, b) => b[1] - a[1]).slice(0, 3)
+    const styleEntries = toEntries(ctx.styleFrequency).sort((a, b) => b[1] - a[1]).slice(0, 3)
 
     return {
       context:    ctx.contextKey,
