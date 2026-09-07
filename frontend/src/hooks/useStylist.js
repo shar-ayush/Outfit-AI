@@ -15,8 +15,14 @@ import { stylistApi, outfitsApi } from '@/api';
 import { QUERY_KEYS } from '@/constants/queryKeys';
 
 export function useSendStylistMessage() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: stylistApi.sendChatMessage,
+    onSuccess: (result) => {
+      if (result?.dailyUpdated || result?.type === 'outfits') {
+        queryClient.invalidateQueries({ queryKey: ['outfits', 'daily'] });
+      }
+    },
   });
 }
 

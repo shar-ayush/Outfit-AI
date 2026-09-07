@@ -443,6 +443,58 @@ function formatDailyOutfitForClient(outfitDoc, recommendationId) {
 }
 
 // ─────────────────────────────────────────────
+// Build context-aware daily prompt & stylist note
+// ─────────────────────────────────────────────
+
+function buildDailyPrompt(date, weatherContext, reason = null) {
+  const d = new Date(date)
+  const dayName = d.toLocaleDateString('en-US', { weekday: 'long' })
+  const dayOfWeek = d.getDay() // 0 = Sun, 6 = Sat
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+  const isFriday = dayOfWeek === 5
+
+  const dayVibe = isWeekend
+    ? 'relaxed weekend leisure or casual outing'
+    : isFriday
+      ? 'smart casual Friday or effortless workday transition'
+      : 'sharp, stylish weekday look suitable for everyday confidence'
+
+  let weatherDesc = 'pleasant weather'
+  if (weatherContext && weatherContext.temperature !== undefined) {
+    const temp = Math.round(weatherContext.temperature)
+    const cond = weatherContext.condition ? weatherContext.condition.toLowerCase() : ''
+    weatherDesc = `${temp}°C${cond ? `, ${cond}` : ''}`
+  }
+
+  if (reason === 'rain') {
+    return `Weather update: Rain detected (${weatherDesc}). Suggest a stylish weather-ready outfit for ${dayName}, prioritizing closed footwear and comfortable layers suitable for wet conditions.`
+  }
+  if (reason === 'temp_warm') {
+    return `Weather update: Warmed up to ${weatherDesc}. Suggest a lighter, breathable, chic outfit for ${dayName}.`
+  }
+  if (reason === 'temp_cold') {
+    return `Weather update: Cooled down to ${weatherDesc}. Suggest a cozier, well-layered outfit for ${dayName} keeping warmth in mind.`
+  }
+
+  return `Suggest an effortless, well-coordinated outfit for ${dayName} (${dayVibe}). Current weather is ${weatherDesc}. Focus on visual harmony, balance, and everyday style.`
+}
+
+export function buildDailyStylistNote(outfit, dayName) {
+  if (!outfit) return null
+  const vibe = outfit.vibe || 'Chic'
+  const primaryItem = outfit.items?.[0]
+  const itemDesc = primaryItem ? `${primaryItem.color?.primary || ''} ${primaryItem.subCategory || primaryItem.category || ''}`.trim() : ''
+
+  if (outfit.whyItWorks) {
+    return `${dayName}'s Look: ${outfit.whyItWorks}`
+  }
+  if (itemDesc) {
+    return `${dayName} styling: Anchored around your ${itemDesc} for an effortless ${vibe.toLowerCase()} vibe.`
+  }
+  return `Curated for your ${dayName}: An effortless ${vibe.toLowerCase()} look tailored to today's weather.`
+}
+
+// ─────────────────────────────────────────────
 // Get or create today's daily recommendation
 // ─────────────────────────────────────────────
 
@@ -473,12 +525,9 @@ export async function getOrCreateDailyRecommendation({ userId, date, weatherCont
     }
   }
 
-  // 2. Generate initial daily suggestion
+  // 2. Generate initial daily suggestion with context-aware prompt
   const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' })
-  let query = `Suggest a casual outfit for ${dayName}`
-  if (weatherContext && weatherContext.temperature !== undefined) {
-    query = `Suggest a casual outfit for ${dayName}, ${weatherContext.temperature}°C, ${weatherContext.condition ? weatherContext.condition.toLowerCase() : ''}`
-  }
+  const query = buildDailyPrompt(date, weatherContext)
 
   const result = await getOutfitRecommendations({
     userId,
@@ -488,6 +537,7 @@ export async function getOrCreateDailyRecommendation({ userId, date, weatherCont
   })
 
   const outfit = result.outfits?.[0] || null
+  const stylistMessage = buildDailyStylistNote(outfit, dayName)
 
   if (outfit) {
     const created = await DailyRecommendation.findOneAndUpdate(
@@ -500,7 +550,7 @@ export async function getOrCreateDailyRecommendation({ userId, date, weatherCont
         weatherAtRecommendation: weatherContext
           ? { temperature: weatherContext.temperature, condition: weatherContext.condition }
           : null,
-        message: result.message || null,
+        message: stylistMessage,
         sessionId: result.sessionId || null,
       },
       { upsert: true, new: true }
@@ -510,7 +560,7 @@ export async function getOrCreateDailyRecommendation({ userId, date, weatherCont
       outfit,
       recommendationId: outfit.recommendationId,
       weatherAtRecommendation: created.weatherAtRecommendation || null,
-      message: result.message || null,
+      message: stylistMessage,
       sessionId: result.sessionId?.toString() || null,
       isNew: true,
     }
@@ -532,7 +582,7 @@ export async function getOrCreateDailyRecommendation({ userId, date, weatherCont
 // Refresh today's daily recommendation
 // ─────────────────────────────────────────────
 
-export async function refreshDailyRecommendation({ userId, date, weatherContext = null }) {
+export async function refreshDailyRecommendation({ userId, date, weatherContext = null, reason = null }) {
   if (!date) {
     throw new ApiError(400, 'Date string (YYYY-MM-DD) is required')
   }
@@ -541,10 +591,7 @@ export async function refreshDailyRecommendation({ userId, date, weatherContext 
   const sessionId = existing?.sessionId || null
 
   const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' })
-  let query = `Suggest a casual outfit for ${dayName}`
-  if (weatherContext && weatherContext.temperature !== undefined) {
-    query = `Suggest a casual outfit for ${dayName}, ${weatherContext.temperature}°C, ${weatherContext.condition ? weatherContext.condition.toLowerCase() : ''}`
-  }
+  const query = buildDailyPrompt(date, weatherContext, reason)
 
   const result = await getOutfitRecommendations({
     userId,
@@ -555,6 +602,7 @@ export async function refreshDailyRecommendation({ userId, date, weatherContext 
   })
 
   const outfit = result.outfits?.[0] || null
+  const stylistMessage = buildDailyStylistNote(outfit, dayName)
 
   if (outfit) {
     const updated = await DailyRecommendation.findOneAndUpdate(
@@ -567,7 +615,7 @@ export async function refreshDailyRecommendation({ userId, date, weatherContext 
         weatherAtRecommendation: weatherContext
           ? { temperature: weatherContext.temperature, condition: weatherContext.condition }
           : null,
-        message: result.message || null,
+        message: stylistMessage,
         sessionId: result.sessionId || sessionId,
       },
       { upsert: true, new: true }
@@ -577,7 +625,7 @@ export async function refreshDailyRecommendation({ userId, date, weatherContext 
       outfit,
       recommendationId: outfit.recommendationId,
       weatherAtRecommendation: updated.weatherAtRecommendation || null,
-      message: result.message || null,
+      message: stylistMessage,
       sessionId: result.sessionId?.toString() || null,
     }
   }

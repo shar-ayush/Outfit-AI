@@ -19,7 +19,7 @@ function outfitKey(outfit) {
 // show the user two identical outfit cards.
 // ─────────────────────────────────────────────
 
-function dedupeExactOutfits(outfits, allCandidates) {
+function dedupeExactOutfits(outfits) {
   const seen   = new Set()
   const result = []
 
@@ -28,21 +28,7 @@ function dedupeExactOutfits(outfits, allCandidates) {
     if (!seen.has(key)) {
       seen.add(key)
       result.push(outfit)
-      continue
     }
-
-    const replacement = allCandidates.find(c => !seen.has(outfitKey(c)))
-    if (replacement) {
-      seen.add(outfitKey(replacement))
-      result.push({
-        ...outfit,
-        items:      replacement.items,
-        score:      replacement.score,
-        outfitName: `${outfit.outfitName} (Alt)`,
-      })
-    }
-    // If no distinct replacement exists, do not push a duplicate clone.
-    // Returning genuinely unique outfits maintains trust and prevents fake duplicate cards.
   }
 
   return result
@@ -100,7 +86,7 @@ export async function rankCandidates({
   )
 
   // Step 6 — exact-duplicate safety net
-  const deduped = dedupeExactOutfits(composed, top20)
+  const deduped = dedupeExactOutfits(composed)
 
   // Step 7 — independent verification + single retry per outfit
   const verifications = await verifyOutfitConstraints(deduped, intent)

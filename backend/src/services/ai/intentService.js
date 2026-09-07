@@ -124,19 +124,26 @@ When in doubt, prefer "outfit_request".
 STEP 2 — If outfit_request, extract ALL of the following:
 - occasions, formality, season, weatherSuitability, style — as before
 - "requestedCount": integer 1, 2, or 3.
-  - Set 1 if user asks for "an outfit", "just 1 option", "one look", "single outfit".
+  - Set 1 if user asks for "an outfit", "just 1 option", "one look", "single outfit", or when SWAPPING/CHANGING an item in the current outfit.
   - Set 2 if user asks for "2 options", "a couple of looks", "two outfits".
   - Set 3 for "3 outfits", "some outfits", "options", or when no number is specified.
 - "slotConstraints": ONLY populate a slot (top/bottom/footwear/outerwear/accessory/full_body)
-  when the user EXPLICITLY named a color, garment type, or pattern for that slot.
-  Do not guess or fill in slots the user didn't mention. Leave a slot entirely
-  absent if nothing was said about it.
+  when the user EXPLICITLY named a color, garment type, or pattern for that slot, OR when carrying over items in an item swap.
 - "resetSlots": array of slot names (from [top, bottom, footwear, outerwear, accessory, full_body])
   where the user explicitly asks to CHANGE, REPLACE, or TRY SOMETHING ELSE for that slot
   (e.g. "suggest something else in top", "different top", "change shirt", "any top",
   "try another footwear", "different jacket").
   CRITICAL: If the user says "only [slot]" or "just [slot]" (e.g. "I want only black top", "just show me outfits with sneakers"),
   they want to ANCHOR on that slot and free up the other slots. Include all other previously constrained slots in "resetSlots" so the system can explore versatile combinations!
+  DO NOT put slots into resetSlots when the user is simply swapping an item (e.g. "swap with black bottom").
+- "ITEM SWAP / IN-PLACE REFINEMENT":
+  When the user asks to swap, change, or replace a specific item in the previous outfit (e.g. "Can you swap with black bottom", "swap the skirt with black trousers", "change shoes to sneakers", "can we do black pants instead"):
+  1. The user wants to KEEP the other items from that previous outfit (e.g. keep the same top, footwear, and outerwear) and ONLY replace the mentioned slot!
+  2. Inspect the last assistant message in the Conversation context to identify what was worn. Carry forward those other items into "slotConstraints" so those items stay locked! (e.g. if the previous outfit was cardigan + sweatpants + sandals + jacket, keep top: {color: "black", subCategory: "cardigan"}, footwear: {color: "light blue", subCategory: "sandals"}, outerwear: {color: "burgundy", subCategory: "leather jacket"}).
+  3. Put the new requested item into "slotConstraints" for the swapped slot (e.g. bottom: {color: "black"}).
+  4. Add an exclusion in "excludeConstraints" for the item being replaced (e.g. {slot: "bottom", attribute: "color", value: "beige"}).
+  5. Leave "resetSlots" as [] (do NOT put the other slots in resetSlots!).
+  6. Set "requestedCount" to 1 (the user is tweaking a single outfit).
 - "excludeConstraints": array of { slot, attribute, value } for anything the user
   said NOT to include (e.g. "no heels" → {slot: "footwear", attribute: "subCategory", value: "heels"};
   "nothing black" → {slot: <any if unspecified>, attribute: "color", value: "black"}.
@@ -176,6 +183,8 @@ Return ONLY valid JSON matching this shape:
 Examples:
 - "suggest me an outfit with pink top white skirt and black footwear" →
   {"messageType":"outfit_request","occasions":"casual","formality":"casual","season":null,"weatherSuitability":null,"style":["casual"],"slotConstraints":{"top":{"color":"pink","subCategory":null,"pattern":null},"bottom":{"color":"white","subCategory":"skirt","pattern":null},"footwear":{"color":"black","subCategory":null,"pattern":null}},"resetSlots":[],"requestedCount":3,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
+- "Can you swap with black bottom" (after assistant: Outfit 1: black layered cardigan and shirt, beige sweatpants, light blue sandals, burgundy leather jacket) →
+  {"messageType":"outfit_request","occasions":"casual","formality":"casual","season":"autumn","weatherSuitability":"rain","style":["casual"],"slotConstraints":{"top":{"color":"black","subCategory":"cardigan","pattern":null},"bottom":{"color":"black","subCategory":null,"pattern":null},"footwear":{"color":"light blue","subCategory":"sandals","pattern":null},"outerwear":{"color":"burgundy","subCategory":"leather jacket","pattern":null}},"resetSlots":[],"requestedCount":1,"excludeConstraints":[{"slot":"bottom","attribute":"color","value":"beige"}],"moodDescriptor":null,"isRefinement":true,"refinementInstruction":"swap beige bottom with black bottom while keeping cardigan, sandals, and jacket"}
 - "I want only black top" (after pink top + black trousers + sandals) →
   {"messageType":"outfit_request","occasions":"casual","formality":"casual","season":null,"weatherSuitability":null,"style":[],"slotConstraints":{"top":{"color":"black","subCategory":null,"pattern":null}},"resetSlots":["bottom","footwear"],"requestedCount":3,"excludeConstraints":[{"slot":"top","attribute":"color","value":"pink"}],"moodDescriptor":null,"isRefinement":true,"refinementInstruction":"anchor on black top, explore different bottoms and shoes"}
 - "Can you suggest something else in top with white skirt or trousers" (after pink top was recommended) →

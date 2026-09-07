@@ -288,9 +288,27 @@ Return ONLY a JSON array of up to ${count} objects (at least 1, at most ${count}
     const result     = await model.generateContent(prompt)
     const selections = JSON.parse(result.response.text())
 
-    return selections.map(selection => {
-      const combo = candidates[selection.selectedIndex] || candidates[0]
-      return {
+    const seenIndices = new Set()
+    const seenKeys = new Set()
+    const uniqueComposed = []
+
+    for (const selection of (Array.isArray(selections) ? selections : [])) {
+      if (typeof selection.selectedIndex !== 'number') continue
+      if (seenIndices.has(selection.selectedIndex)) continue
+
+      const combo = candidates[selection.selectedIndex]
+      if (!combo) continue
+
+      const key = (combo.items || [])
+        .map(i => (i._id?.toString ? i._id.toString() : String(i._id || i)))
+        .sort()
+        .join('_')
+      if (seenKeys.has(key)) continue
+
+      seenIndices.add(selection.selectedIndex)
+      seenKeys.add(key)
+
+      uniqueComposed.push({
         items:      combo.items,
         score:      combo.score,
         outfitName: selection.outfitName || 'Curated Outfit',
@@ -299,8 +317,23 @@ Return ONLY a JSON array of up to ${count} objects (at least 1, at most ${count}
         vibe:       selection.vibe || 'classic',
         constraintsSatisfied: selection.constraintsSatisfied !== false,
         substitutionNote:     selection.substitutionNote || null,
-      }
-    })
+      })
+    }
+
+    if (uniqueComposed.length > 0) {
+      return uniqueComposed
+    }
+
+    return candidates.slice(0, 1).map(combo => ({
+      items:      combo.items,
+      score:      combo.score,
+      outfitName: 'Curated Outfit',
+      whyItWorks: 'A balanced outfit from your wardrobe.',
+      stylingTip: 'Wear with confidence.',
+      vibe:       'classic',
+      constraintsSatisfied: true,
+      substitutionNote:     null,
+    }))
   } catch (error) {
     console.error('composeOutfitsFromPool failed, falling back to top algorithmic candidates:', error.message)
     // Fallback — same safety net pattern as the old llmReRankOutfits catch block

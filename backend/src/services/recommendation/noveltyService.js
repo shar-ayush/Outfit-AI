@@ -1,14 +1,14 @@
 import Recommendation from '../../models/Recommendation.js'
-import WearLog from '../../models/WearLog.js'
+import Outfit from '../../models/Outfit.js'
 
-const RECENCY_WINDOW_DAYS = 14
-const MAX_NOVELTY_PENALTY = 0.5 // max 50% penalty for recently seen items
+const RECENCY_WINDOW_DAYS = 7 // Recency window for past recommendations
+const MAX_NOVELTY_PENALTY = 0.4 // Max penalty for repeatedly suggested items
 
 // ─────────────────────────────────────────────
-// Penalize candidates that contain recently
-// suggested or recently worn items
-// Prevents the system from showing the same
-// combinations repeatedly
+// Penalize candidates that contain items shown
+// repeatedly in the active session or recent recs.
+// NOTE: Recently worn items (WearLog) are NOT
+// penalized so user staples remain accessible.
 // ─────────────────────────────────────────────
 
 export async function applyNoveltyPenalty(candidates, userId, shownItemIds = []) {
@@ -22,14 +22,6 @@ export async function applyNoveltyPenalty(candidates, userId, shownItemIds = [])
     .populate({ path: 'outfitId', select: 'items' })
     .lean()
 
-  // Fetch recently worn item IDs
-  const recentWears = await WearLog.find({
-    userId,
-    wornAt: { $gte: cutoff },
-  })
-    .select('items')
-    .lean()
-
   // Build recency maps — more recent = higher score = bigger penalty
   const recMap = {}
 
@@ -38,20 +30,11 @@ export async function applyNoveltyPenalty(candidates, userId, shownItemIds = [])
     const recency = 1 / (daysAgo + 1)
     for (const item of rec.outfitId?.items || []) {
       const id = item.clothId?.toString()
-      if (id) recMap[id] = Math.max(recMap[id] || 0, recency * 0.7)
+      if (id) recMap[id] = Math.max(recMap[id] || 0, recency * 0.5)
     }
   }
 
-  for (const log of recentWears) {
-    const daysAgo = (Date.now() - new Date(log.wornAt)) / (1000 * 60 * 60 * 24)
-    const recency = 1 / (daysAgo + 1)
-    for (const item of log.items || []) {
-      const id = item.clothId?.toString()
-      if (id) recMap[id] = Math.max(recMap[id] || 0, recency)
-    }
-  }
-
-  // Also include items shown in current session
+  // Include items shown in current session to prevent repetitive suggestions in same chat/refresh
   for (const id of shownItemIds) {
     recMap[id] = Math.max(recMap[id] || 0, 0.8)
   }

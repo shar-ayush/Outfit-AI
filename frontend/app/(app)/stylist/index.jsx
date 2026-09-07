@@ -83,6 +83,9 @@ export default function StylistChatScreen() {
               outfits: result.outfits,
               intent: result.intent,
             });
+            if (result.dailyUpdated) {
+              showToast("Updated today's recommendation on Home", 'success');
+            }
           } else {
             addMessage({ role: 'assistant', type: 'text', content: result.message });
           }

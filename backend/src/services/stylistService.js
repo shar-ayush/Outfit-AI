@@ -1,5 +1,6 @@
 import ConversationSession from '../models/ConversationSession.js'
-import { getOutfitRecommendations } from './outfitService.js'
+import DailyRecommendation from '../models/DailyRecommendation.js'
+import { getOutfitRecommendations, buildDailyStylistNote } from './outfitService.js'
 import { extractIntent } from './ai/intentService.js'
 import { mergeIntent } from '../utils/intentMerge.js'
 import { getGenerativeModel } from '../config/gemini.js'
@@ -84,12 +85,53 @@ export async function handleStylistMessage({
     weatherContext,
   })
 
+  // If this session is linked to today's daily recommendation, or if the user
+  // is customizing today's look, sync the newly recommended outfit back to
+  // today's DailyRecommendation on the homescreen.
+  let dailyUpdated = false
+  if (result.outfits && result.outfits.length > 0) {
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const effectiveSessionId = result.sessionId || sessionId || session?._id
+
+    let dailyRec = await DailyRecommendation.findOne({
+      userId,
+      sessionId: effectiveSessionId,
+    })
+
+    // If not matched by sessionId directly, check if the session is refining today's outfit
+    if (!dailyRec && (intent.isRefinement || /today/i.test(message))) {
+      dailyRec = await DailyRecommendation.findOne({
+        userId,
+        date: todayStr,
+      })
+    }
+
+    if (dailyRec) {
+      const chosenOutfit = result.outfits[0]
+      const d = new Date(dailyRec.date || todayStr)
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' })
+      const stylistMessage = buildDailyStylistNote(chosenOutfit, dayName)
+
+      dailyRec.outfitId = chosenOutfit.outfitId || chosenOutfit._id
+      dailyRec.recommendationId = chosenOutfit.recommendationId || null
+      if (stylistMessage) {
+        dailyRec.message = stylistMessage
+      }
+      if (effectiveSessionId && !dailyRec.sessionId) {
+        dailyRec.sessionId = effectiveSessionId
+      }
+      await dailyRec.save()
+      dailyUpdated = true
+    }
+  }
+
   return {
-    type:      'outfits',
-    outfits:   result.outfits,
-    sessionId: result.sessionId,
-    intent:    result.intent,
-    message:   result.outfits.length > 0
+    type:         'outfits',
+    outfits:      result.outfits,
+    sessionId:    result.sessionId,
+    intent:       result.intent,
+    dailyUpdated,
+    message:      result.outfits.length > 0
       ? buildOutfitResponseMessage(result.outfits, targetCount)
       : result.message,
   }
@@ -173,13 +215,64 @@ export async function getOrCreateSession(userId, sessionId = null) {
 
 export async function getSessionHistory(sessionId, userId) {
   const session = await ConversationSession.findOne({
-    _id:    sessionId,
+    _id: sessionId,
     userId,
-  }).lean()
+  })
+    .populate({
+      path: 'messages.outfitIds',
+      populate: {
+        path: 'items.clothId',
+        select: '-embedding',
+      },
+    })
+    .lean()
 
   if (!session) throw new ApiError(404, 'Session not found')
 
-  return session
+  const formattedMessages = (session.messages || []).map(msg => {
+    if (msg.outfitIds && msg.outfitIds.length > 0 && typeof msg.outfitIds[0] === 'object') {
+      const outfits = msg.outfitIds.filter(Boolean).map(o => ({
+        outfitId: o._id?.toString(),
+        _id: o._id?.toString(),
+        outfitName: o.outfitName,
+        whyItWorks: o.whyItWorks,
+        stylingTip: o.stylingTip,
+        vibe: o.vibe,
+        occasion: o.occasion,
+        formality: o.formality,
+        isSaved: Boolean(o.isSaved),
+        items: (o.items || []).map(it => {
+          const c = it.clothId || it
+          return {
+            _id: c._id?.toString ? c._id.toString() : c._id,
+            imageUrl: c.imageUrl,
+            category: c.category,
+            subCategory: c.subCategory,
+            color: c.color,
+            style: c.style,
+            formality: c.formality,
+            role: it.role || c.category,
+          }
+        }),
+      }))
+
+      return {
+        ...msg,
+        type: 'outfits',
+        outfits,
+      }
+    }
+
+    return {
+      ...msg,
+      type: msg.role === 'assistant' ? 'text' : undefined,
+    }
+  })
+
+  return {
+    ...session,
+    messages: formattedMessages,
+  }
 }
 
 // ─────────────────────────────────────────────

@@ -192,7 +192,7 @@ export const getDailyOutfit = asyncHandler(async (req, res) => {
 // ─────────────────────────────────────────────
 
 export const refreshDailyOutfit = asyncHandler(async (req, res) => {
-  const { date, weatherContext } = req.body
+  const { date, weatherContext, reason } = req.body
 
   const targetDate = date || new Date().toISOString().slice(0, 10)
 
@@ -200,6 +200,7 @@ export const refreshDailyOutfit = asyncHandler(async (req, res) => {
     userId: req.user._id,
     date: targetDate,
     weatherContext: weatherContext || null,
+    reason: reason || null,
   })
 
   return res.json(

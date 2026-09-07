@@ -24,10 +24,11 @@ export async function getDailyOutfit({ date, weatherContext = null }) {
   return data.data; // { outfit, recommendationId, weatherAtRecommendation, message, sessionId, isNew }
 }
 
-export async function refreshDailyOutfit({ date, weatherContext = null }) {
+export async function refreshDailyOutfit({ date, weatherContext = null, reason = null }) {
   const { data } = await apiClient.post('/outfits/daily/refresh', {
     date,
     weatherContext,
+    reason,
   });
   return data.data;
 }

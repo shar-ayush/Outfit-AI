@@ -51,6 +51,7 @@ export function useOutfitAction() {
       queryClient.invalidateQueries({ queryKey: ['outfits', 'saved'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SLEEPING_ITEMS });
+      queryClient.invalidateQueries({ queryKey: ['outfits', 'daily'] });
     },
   });
 }
