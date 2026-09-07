@@ -26,7 +26,8 @@ export function mergeIntent(previousIntent, newIntent) {
 
     slotConstraints: mergeSlotConstraints(
       previousIntent.slotConstraints || {},
-      newIntent.slotConstraints || {}
+      newIntent.slotConstraints || {},
+      newIntent.resetSlots || []
     ),
 
     // Exclude constraints: a refinement that adds new exclusions
@@ -45,23 +46,29 @@ export function mergeIntent(previousIntent, newIntent) {
   }
 }
 
-function mergeSlotConstraints(previous, incoming) {
+function mergeSlotConstraints(previous, incoming, resetSlots = []) {
   const slots = new Set([...Object.keys(previous), ...Object.keys(incoming)])
   const merged = {}
 
   for (const slot of slots) {
-    const prev = previous[slot] || {}
-    const next = incoming[slot] || {}
-
-    const combined = {
-      color:       next.color       ?? prev.color       ?? null,
-      subCategory: next.subCategory ?? prev.subCategory ?? null,
-      pattern:     next.pattern     ?? prev.pattern      ?? null,
+    // If this slot was explicitly reset/cleared by the user, do not inherit previous constraints
+    if (resetSlots.includes(slot)) {
+      if (incoming[slot] && (incoming[slot].color || incoming[slot].subCategory || incoming[slot].pattern)) {
+        merged[slot] = incoming[slot]
+      }
+      continue
     }
 
-    // Only keep the slot if it actually has something set
-    if (combined.color || combined.subCategory || combined.pattern) {
-      merged[slot] = combined
+    // If incoming explicitly specified this slot in the current turn,
+    // the incoming definition takes precedence
+    if (incoming[slot]) {
+      merged[slot] = incoming[slot]
+      continue
+    }
+
+    // Otherwise preserve previous constraint for untouched slot
+    if (previous[slot]) {
+      merged[slot] = previous[slot]
     }
   }
 

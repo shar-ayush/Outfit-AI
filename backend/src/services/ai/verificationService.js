@@ -33,6 +33,7 @@ export async function verifyOutfitConstraints(outfits, intent) {
     items: outfit.items.map(item => ({
       category:    item.category,
       color:       item.color?.primary,
+      colorFamily: item.color?.colorFamily,
       subCategory: item.subCategory,
       pattern:     item.pattern,
     })),
@@ -55,10 +56,12 @@ Outfits to audit:
 ${JSON.stringify(outfitSummaries, null, 2)}
 
 For EACH outfit:
-1. Check every locked slot's item against its constraint (color/subCategory/pattern) exactly.
+1. Check every locked slot's item against its constraint (color/subCategory/pattern).
+   NOTE: Color shades (e.g. 'light pink' or 'hot pink' for 'pink', 'navy blue' for 'blue')
+   fully satisfy the color constraint and are NOT violations.
 2. Check whether the outfit contains anything listed in exclusions.
 
-If a locked slot doesn't match exactly, look at whether the outfit's own whyItWorks/
+If a locked slot doesn't match (and is not a valid shade/family match), look at whether the outfit's own whyItWorks/
 substitutionNote already gives a real explanation (e.g. "no second white skirt existed").
 If a genuine explanation is present, mark satisfied: false but carry that justification
 through. If there is NO explanation for a mismatch, mark satisfied: false with
@@ -72,7 +75,7 @@ Return ONLY a JSON array, one object per outfit, in outfitIndex order:
   {
     "outfitIndex": 0,
     "satisfied": boolean,
-    "violations": [{ "slot": string, "expected": string, "got": string, "type": "constraint" | "exclusion" }],
+    "violations": [{ "slot": string, "expected": string, "got": string, "violationType": "constraint" | "exclusion" }],
     "justification": string or null
   }
 ]

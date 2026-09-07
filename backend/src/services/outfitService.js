@@ -195,12 +195,17 @@ export async function getOutfitRecommendations({
     ...rankedOutfits.flatMap(o => o.items.map(i => i._id.toString())),
   ]
 
+  const assistantMessageContent = savedOutfits.map((o, idx) => {
+    const items = o.items.map(it => `${it.color?.primary || ''} ${it.subCategory || it.category}`).filter(Boolean).join(', ')
+    return `Outfit ${idx + 1} (${o.outfitName}): ${items}`
+  }).join('. ')
+
   if (session) {
     session.messages.push(
       { role: 'user', content: query },
       {
         role: 'assistant',
-        content: savedOutfits.map(o => o.outfitName).join(', '),
+        content: assistantMessageContent,
         outfitIds: savedOutfits.map(o => o.outfitId),
       }
     )
@@ -216,7 +221,7 @@ export async function getOutfitRecommendations({
         { role: 'user', content: query },
         {
           role: 'assistant',
-          content: savedOutfits.map(o => o.outfitName).join(', '),
+          content: assistantMessageContent,
           outfitIds: savedOutfits.map(o => o.outfitId),
         },
       ],

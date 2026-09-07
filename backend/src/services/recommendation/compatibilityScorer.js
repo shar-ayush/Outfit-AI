@@ -159,12 +159,22 @@ export function computeConstraintMatchScore(item, slotConstraint) {
 
   if (slotConstraint.color) {
     const itemColor = (item.color?.primary || '').toLowerCase().trim()
+    const itemFamily = (item.color?.colorFamily || '').toLowerCase().trim()
     const wantColor = slotConstraint.color.toLowerCase().trim()
+    const wantFamily = (slotConstraint.colorFamily || '').toLowerCase().trim()
+
     if (itemColor === wantColor) {
       checks.push(1.0)
-    } else if (item.color?.colorFamily && slotConstraint.colorFamily &&
-               item.color.colorFamily.toLowerCase() === slotConstraint.colorFamily.toLowerCase()) {
-      checks.push(0.6) // same family, not exact — e.g. retrieved via a relaxed search
+    } else if (
+      (itemFamily && itemFamily === wantColor) ||
+      (itemColor && (itemColor.includes(wantColor) || wantColor.includes(itemColor)))
+    ) {
+      checks.push(0.95) // direct match via family or shade (e.g. 'light pink' for 'pink', or 'pink' for 'light pink')
+    } else if (
+      (wantFamily && itemFamily === wantFamily) ||
+      (wantFamily && itemColor.includes(wantFamily))
+    ) {
+      checks.push(0.7) // same family relaxed search
     } else {
       checks.push(0.15) // present in the pool despite not matching — likely a forced-floor/fallback item
     }
@@ -173,7 +183,9 @@ export function computeConstraintMatchScore(item, slotConstraint) {
   if (slotConstraint.subCategory) {
     const itemSub = (item.subCategory || '').toLowerCase().trim()
     const wantSub = slotConstraint.subCategory.toLowerCase().trim()
-    checks.push(itemSub === wantSub ? 1.0 : 0.2)
+    const isExact = itemSub === wantSub
+    const isSubtype = itemSub.includes(wantSub) || wantSub.includes(itemSub)
+    checks.push(isExact ? 1.0 : isSubtype ? 0.95 : 0.2)
   }
 
   if (slotConstraint.pattern) {

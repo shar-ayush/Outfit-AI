@@ -35,7 +35,7 @@ const recommendationSchema = new mongoose.Schema({
       slot:     String,
       expected: String,
       got:      String,
-      type:     String, // 'constraint' | 'exclusion'
+      violationType: String, // 'constraint' | 'exclusion'
     }],
     justification: String,
   },

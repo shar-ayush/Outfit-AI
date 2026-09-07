@@ -224,6 +224,7 @@ export async function composeOutfitsFromPool(candidates, userQuery, conversation
     items: combo.items.map(item => ({
       category:    item.category,
       color:       item.color?.primary,
+      colorFamily: item.color?.colorFamily,
       subCategory: item.subCategory,
       style:       item.style,
       formality:   item.formality,
@@ -258,15 +259,18 @@ TASK: Select ${count} of these candidates as the final outfits to show the user.
 RULES:
 1. NEVER select a candidate that violates an EXCLUSION — this is a hard rule, no exceptions.
 2. For LOCKED slots, strongly prefer candidates where that slot's item matches the
-   constraint exactly. If NONE of the candidates satisfy a locked slot, you may select
-   the closest available option — but you MUST say so plainly in whyItWorks (e.g.
-   "styled with your white trousers here since no second white skirt was available").
+   constraint (shades like "light pink" or "navy blue" fully satisfy "pink" or "blue"
+   constraints — do NOT treat shades as substitutions or mismatches). If NONE of the
+   candidates satisfy a locked slot, you may select the closest available option — but
+   you MUST say so plainly in whyItWorks (e.g. "styled with your white trousers here
+   since no second white skirt was available").
 3. Enforce variety ONLY on slots that are NOT locked. Two outfits may legitimately
    share every locked-slot item if the wardrobe only supports one good option there —
    that is correct behavior, not a bug. Vary outerwear, footwear, style, or accessories
    (whichever are unconstrained) to make the ${count} outfits feel genuinely distinct.
 4. Give each outfit a different name and a different vibe word.
 5. Do not select the exact same candidate index more than once.
+6. If this is a refinement where the user asked for "something else" or a different item for a slot (e.g. "something else in top", "different shoes"), DO NOT select outfits that feature the exact same item from that slot shown in the previous conversation. Pick candidates with different pieces for that slot.
 
 Return ONLY a JSON array of exactly ${count} objects:
 [

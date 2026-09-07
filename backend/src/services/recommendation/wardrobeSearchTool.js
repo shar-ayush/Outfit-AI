@@ -1,7 +1,7 @@
 import Cloth from '../../models/Cloth.js'
 import { generateEmbedding } from '../ai/embeddingService.js'
 import mongoose from 'mongoose'
-
+import { SchemaType } from '@google/generative-ai'
 const DEFAULT_LIMIT = 10
 
 // ─────────────────────────────────────────────
@@ -22,45 +22,84 @@ export const searchWardrobeDeclaration = {
     'constraints — e.g. colorFamily instead of an exact color, or a lower ' +
     'minSimilarity — but note in your final answer that you did this.',
   parameters: {
-    type: 'object',
+    type: SchemaType.OBJECT,
     properties: {
       category: {
-        type: 'string',
+        type: SchemaType.STRING,
         enum: ['top', 'bottom', 'footwear', 'outerwear', 'accessory', 'full_body'],
         description: 'The clothing category/slot to search for.',
       },
       color: {
-        type: 'string',
+        type: SchemaType.STRING,
         description: 'Exact primary color requested by the user, e.g. "pink", "white", "black". Omit entirely if the user did not specify a color for this slot.',
       },
       colorFamily: {
-        type: 'string',
+        type: SchemaType.STRING,
         description: 'Broader color family — use this INSTEAD of color when relaxing a failed exact-color search. One of: neutral, blue, red, green, earth, pastel.',
       },
       subCategory: {
-        type: 'string',
+        type: SchemaType.STRING,
         description: 'Specific garment type requested, e.g. "skirt", "trousers", "sneakers", "blazer". Omit if not specified.',
       },
       excludeSubCategories: {
-        type: 'array',
-        items: { type: 'string' },
+        type: SchemaType.ARRAY,
+        items: { type: SchemaType.STRING },
         description: 'Garment subtypes to exclude from results, e.g. ["heels"] if the user said "no heels".',
       },
       queryText: {
-        type: 'string',
+        type: SchemaType.STRING,
         description: 'Natural language description used for semantic similarity ranking, e.g. "pink top" or "powerful confident blazer for a presentation".',
       },
       minSimilarity: {
-        type: 'number',
+        type: SchemaType.NUMBER,
         description: 'Minimum semantic similarity score, 0 to 1. Defaults to 0.5. Lower this on a retry if the first call returned too few results.',
       },
       limit: {
-        type: 'number',
+        type: SchemaType.NUMBER,
         description: 'Maximum number of items to return. Defaults to 10.',
       },
     },
     required: ['category', 'queryText'],
   },
+}
+
+const KNOWN_SUBCATEGORY_MAP = {
+  skirt: ['skirt', 'midi skirt', 'mini skirt', 'maxi skirt', 'pleated skirt', 'pencil skirt', 'a-line skirt', 'denim skirt'],
+  shirt: ['shirt', 'button-up shirt', 't-shirt', 'button-down shirt', 'polo shirt', 'dress shirt', 'layered cardigan and shirt', 'layered sweater and shirt'],
+  trousers: ['trousers', 'pants', 'chinos', 'dress trousers'],
+  pants: ['pants', 'trousers', 'chinos', 'cargo pants', 'sweatpants', 'jeans'],
+  jeans: ['jeans', 'denim pants'],
+  jacket: ['jacket', 'leather jacket', 'denim jacket', 'bomber jacket', 'blazer'],
+  shoes: ['shoes', 'sneakers', 'sandals', 'heels', 'boots', 'loafers'],
+  footwear: ['footwear', 'shoes', 'sneakers', 'sandals', 'heels', 'boots'],
+  sweater: ['sweater', 'cardigan', 'layered sweater and shirt', 'pullover', 'hoodie'],
+}
+
+async function getMatchingSubCategories(category, subCategory) {
+  if (!subCategory) return []
+  const clean = subCategory.toLowerCase().trim()
+  const matches = new Set([clean])
+
+  if (KNOWN_SUBCATEGORY_MAP[clean]) {
+    for (const syn of KNOWN_SUBCATEGORY_MAP[clean]) {
+      matches.add(syn)
+    }
+  }
+
+  try {
+    const dbSubs = await Cloth.distinct('subCategory', { category })
+    for (const s of dbSubs) {
+      if (!s) continue
+      const sLow = s.toLowerCase().trim()
+      if (sLow === clean || sLow.includes(clean) || clean.includes(sLow)) {
+        matches.add(sLow)
+      }
+    }
+  } catch {
+    // Non-fatal fallback
+  }
+
+  return Array.from(matches)
 }
 
 // ─────────────────────────────────────────────
@@ -103,13 +142,25 @@ export async function searchWardrobe(userId, args = {}) {
     category:    { $eq: category },
   }
 
-  if (color)       filter['color.primary']    = { $eq: color.toLowerCase().trim() }
-  if (colorFamily) filter['color.colorFamily'] = { $eq: colorFamily.toLowerCase().trim() }
+  if (color) {
+    const c = color.toLowerCase().trim()
+    filter.$or = [
+      { 'color.primary':     { $eq: c } },
+      { 'color.colorFamily': { $eq: c } },
+    ]
+  } else if (colorFamily) {
+    filter['color.colorFamily'] = { $eq: colorFamily.toLowerCase().trim() }
+  }
 
   if (subCategory || excludeSubCategories.length > 0) {
     filter.subCategory = {}
     if (subCategory) {
-      filter.subCategory.$eq = subCategory.toLowerCase().trim()
+      const matchingSubs = await getMatchingSubCategories(category, subCategory)
+      if (matchingSubs.length === 1) {
+        filter.subCategory.$eq = matchingSubs[0]
+      } else if (matchingSubs.length > 1) {
+        filter.subCategory.$in = matchingSubs
+      }
     }
     if (excludeSubCategories.length > 0) {
       filter.subCategory.$nin = excludeSubCategories.map(s => s.toLowerCase().trim())
@@ -159,11 +210,21 @@ export async function searchWardrobe(userId, args = {}) {
       isAvailable: true,
       isArchived:  false,
     }
-    if (color)       mongoFilter['color.primary']    = color.toLowerCase().trim()
-    if (colorFamily) mongoFilter['color.colorFamily'] = colorFamily.toLowerCase().trim()
+    if (color) {
+      const c = color.toLowerCase().trim()
+      mongoFilter.$or = [
+        { 'color.primary':     { $regex: c, $options: 'i' } },
+        { 'color.colorFamily': c },
+      ]
+    } else if (colorFamily) {
+      mongoFilter['color.colorFamily'] = colorFamily.toLowerCase().trim()
+    }
     if (subCategory || excludeSubCategories.length > 0) {
       mongoFilter.subCategory = {}
-      if (subCategory) mongoFilter.subCategory.$eq = subCategory.toLowerCase().trim()
+      if (subCategory) {
+        const matchingSubs = await getMatchingSubCategories(category, subCategory)
+        mongoFilter.subCategory.$in = matchingSubs
+      }
       if (excludeSubCategories.length > 0) {
         mongoFilter.subCategory.$nin = excludeSubCategories.map(s => s.toLowerCase().trim())
       }

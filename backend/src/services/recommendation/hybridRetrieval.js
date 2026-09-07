@@ -78,14 +78,20 @@ async function agenticRetrieval(userId, userQuery, intent) {
     tools: [{ functionDeclarations: [searchWardrobeDeclaration] }],
   })
 
-  const chat = model.startChat()
+  const contents = [
+    { role: 'user', parts: [{ text: buildRetrievalPrompt(userQuery, intent) }] }
+  ]
   const collected = {}       // category -> Map<itemId, fullItem>
   const trail = []       // debug/audit trail — every tool call made
   const callCountByCategory = {}
   let totalCalls = 0
 
-  let response = (await chat.sendMessage(buildRetrievalPrompt(userQuery, intent))).response
-  let calls = response.functionCalls() || []
+  let res = await model.generateContent({ contents })
+  let candidate = res.response.candidates?.[0]
+  if (candidate?.content) {
+    contents.push(candidate.content)
+  }
+  let calls = res.response.functionCalls() || []
 
   while (calls.length > 0 && totalCalls < MAX_TOTAL_TOOL_CALLS) {
     const functionResponseParts = []
@@ -139,13 +145,18 @@ async function agenticRetrieval(userId, userQuery, intent) {
       })
     }
 
-    if (totalCalls >= MAX_TOTAL_TOOL_CALLS) break
+    if (totalCalls >= MAX_TOTAL_TOOL_CALLS || functionResponseParts.length === 0) break
 
-    response = (await chat.sendMessage({
+    contents.push({
       role: 'user',
       parts: functionResponseParts,
-    })).response
-    calls = response.functionCalls() || []
+    })
+
+    res = await model.generateContent({ contents })
+    candidate = res.response.candidates?.[0]
+    if (!candidate?.content) break
+    contents.push(candidate.content)
+    calls = res.response.functionCalls() || []
   }
 
   // ── Defensive floor ──
