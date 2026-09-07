@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourname.outfitai",
+      "bundleIdentifier": "com.ayush.outfitai",
       "infoPlist": {
         "NSCameraUsageDescription": "Outfit AI needs camera access to photograph your clothing items.",
         "NSPhotoLibraryUsageDescription": "Outfit AI needs photo library access to add items from your gallery.",
@@ -22,7 +22,11 @@
         "backgroundColor": "#F9F9F9"
       },
       "package": "com.yourname.outfitai",
-      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION"]
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -54,6 +58,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "974dab54-0352-4bf3-a682-d0a786ca4376"
+      }
     }
   }
 }
