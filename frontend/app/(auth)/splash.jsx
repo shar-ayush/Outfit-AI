@@ -75,7 +75,7 @@ export default function SplashScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.center}>
-        <Text style={styles.wordmark}>outfiT AI</Text>
+        <Text style={styles.wordmark}>OUTFIT AI</Text>
       </View>
       <LoadingLine />
     </View>
