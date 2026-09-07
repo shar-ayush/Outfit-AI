@@ -116,10 +116,19 @@ export const getOutfit = asyncHandler(async (req, res) => {
 // ─────────────────────────────────────────────
 
 export const removeOutfit = asyncHandler(async (req, res) => {
-  const result = await deleteOutfit(req.params.outfitId, req.user._id)
+  const permanent = req.query.permanent === 'true'
+  const result = await deleteOutfit(req.params.outfitId, req.user._id, permanent)
 
   return res.json(
-    new ApiResponse(200, result, 'Outfit deleted')
+    new ApiResponse(200, result, permanent ? 'Outfit permanently deleted' : 'Outfit deleted')
+  )
+})
+
+export const permanentDeleteOutfit = asyncHandler(async (req, res) => {
+  const result = await deleteOutfit(req.params.outfitId, req.user._id, true)
+
+  return res.json(
+    new ApiResponse(200, result, 'Outfit permanently deleted')
   )
 })
 
@@ -192,7 +201,7 @@ export const getDailyOutfit = asyncHandler(async (req, res) => {
 // ─────────────────────────────────────────────
 
 export const refreshDailyOutfit = asyncHandler(async (req, res) => {
-  const { date, weatherContext } = req.body
+  const { date, weatherContext, reason } = req.body
 
   const targetDate = date || new Date().toISOString().slice(0, 10)
 
@@ -200,6 +209,7 @@ export const refreshDailyOutfit = asyncHandler(async (req, res) => {
     userId: req.user._id,
     date: targetDate,
     weatherContext: weatherContext || null,
+    reason: reason || null,
   })
 
   return res.json(

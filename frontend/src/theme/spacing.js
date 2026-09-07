@@ -13,6 +13,12 @@ export const spacing = {
   stackMd: 16,
   stackLg: 32,
   stackXl: 48,
+
+  // Inline spacing
+  inlineXs: 4,
+  inlineSm: 8,
+  inlineMd: 12,
+  inlineLg: 16,
 }
 
 // Corner radius scale — matches DESIGN.md `rounded` tokens

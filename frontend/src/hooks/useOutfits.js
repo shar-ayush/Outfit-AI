@@ -51,6 +51,7 @@ export function useOutfitAction() {
       queryClient.invalidateQueries({ queryKey: ['outfits', 'saved'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SLEEPING_ITEMS });
+      queryClient.invalidateQueries({ queryKey: ['outfits', 'daily'] });
     },
   });
 }
@@ -85,9 +86,14 @@ export function useOutfitRecommendation(outfitId) {
 export function useDeleteOutfit() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: outfitsApi.deleteOutfit,
+    mutationFn: (args) => {
+      const outfitId = typeof args === 'string' ? args : args.outfitId;
+      const options = typeof args === 'object' ? args : {};
+      return outfitsApi.deleteOutfit(outfitId, options);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['outfits', 'saved'] });
+      queryClient.invalidateQueries({ queryKey: ['outfits', 'daily'] });
     },
   });
 }

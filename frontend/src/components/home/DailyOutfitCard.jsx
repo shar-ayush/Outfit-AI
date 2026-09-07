@@ -2,14 +2,8 @@
 //
 // Matches home_dashboard's "Today's Recommendation" hero section: a
 // horizontal strip of item thumbnails (each with a category label chip),
-// then name/badges/why-it-works copy, then Worn Today / Save / Refresh
-// actions.
-//
-// REMOVED FROM THE MOCK: a gold "AI Curated" badge in the header. Every
-// outfit from POST /outfits/suggest is AI-generated — there's no backend
-// flag this badge represents, it's a label restating something
-// always-true. Backend-grounded UI shouldn't manufacture a badge for a
-// fact that isn't a distinguishing piece of data.
+// then name/badges/why-it-works copy, daily stylist message, customize CTA,
+// then Worn Today / Save / Refresh actions.
 
 import React from 'react';
 import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
@@ -33,6 +27,8 @@ export default function DailyOutfitCard({
   onWornToday,
   onSave,
   onRefresh,
+  onWeatherRefresh,
+  onAskStylist,
 }) {
   return (
     <View>
@@ -87,17 +83,27 @@ export default function DailyOutfitCard({
               )}
             </View>
 
-            {outfit.whyItWorks && (
+            {message && (
+              <View style={styles.stylistMessageContainer}>
+                <MaterialCommunityIcons name="creation" size={16} color={colors.goldAccent} style={styles.stylistIcon} />
+                <Text variant="bodyMd" color="secondary" style={styles.stylistMessageText}>
+                  {message}
+                </Text>
+              </View>
+            )}
+
+            {!message && outfit.whyItWorks && (
               <Text variant="bodyLg" color="secondary" style={styles.whyItWorks}>
                 <Text variant="titleSm">Why it works: </Text>
                 {outfit.whyItWorks}
               </Text>
             )}
 
-            {weatherNudge && (
+            {/* Weather Nudge Banner */}
+            {/* {weatherNudge && (
               <Pressable
                 style={styles.weatherNudgeBanner}
-                onPress={onRefresh}
+                onPress={onWeatherRefresh || onRefresh}
                 android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
               >
                 <View style={styles.weatherNudgeIconContainer}>
@@ -116,6 +122,34 @@ export default function DailyOutfitCard({
                   </Text>
                 </View>
                 <MaterialCommunityIcons name="refresh" size={18} color={colors.primary} />
+              </Pressable>
+            )} */}
+
+            {onAskStylist && (
+              <Pressable
+                style={styles.customizeBanner}
+                onPress={onAskStylist}
+                android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
+              >
+                <View style={styles.customizeLeft}>
+                  <View style={styles.customizeIconContainer}>
+                    <MaterialCommunityIcons name="chat-processing-outline" size={16} color={colors.primary} />
+                  </View>
+                  <View style={styles.customizeTextContainer}>
+                    <Text variant="labelMd" style={styles.customizeTitle}>
+                      Want to customize this look?
+                    </Text>
+                    <Text variant="caption" color="secondary" style={styles.customizeSubtitle}>
+                      Ask Stylist to swap pieces or restyle
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.customizeRight}>
+                  <Text variant="labelMd" style={styles.customizeActionText}>
+                    Ask Stylist
+                  </Text>
+                  <MaterialCommunityIcons name="chevron-right" size={16} color={colors.primary} />
+                </View>
               </Pressable>
             )}
 
@@ -173,6 +207,22 @@ const styles = StyleSheet.create({
   outfitName: { marginBottom: spacing.stackSm },
   badgeRow: { flexDirection: 'row', marginBottom: spacing.stackMd },
   badgeSpacing: { marginLeft: spacing.stackSm },
+  stylistMessageContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radius.DEFAULT,
+    padding: spacing.stackSm,
+    marginBottom: spacing.stackMd,
+  },
+  stylistIcon: {
+    marginRight: spacing.stackSm,
+    marginTop: 2,
+  },
+  stylistMessageText: {
+    flex: 1,
+    lineHeight: 20,
+  },
   whyItWorks: { marginBottom: spacing.stackLg },
   weatherNudgeBanner: {
     flexDirection: 'row',
@@ -204,6 +254,55 @@ const styles = StyleSheet.create({
   },
   weatherNudgeMessage: {
     marginTop: 1,
+  },
+  customizeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.stackSm,
+    paddingHorizontal: spacing.stackMd,
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: radius.DEFAULT,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    marginBottom: spacing.stackMd,
+  },
+  customizeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.stackSm,
+  },
+  customizeIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceContainerHigh,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.stackSm,
+  },
+  customizeTextContainer: {
+    flex: 1,
+  },
+  customizeTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    color: colors.onSurface,
+    fontSize: 13,
+  },
+  customizeSubtitle: {
+    marginTop: 1,
+    fontSize: 11,
+  },
+  customizeRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  customizeActionText: {
+    fontFamily: 'Inter_600SemiBold',
+    color: colors.primary,
+    fontSize: 13,
   },
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackSm },
   actionButtonFlex: { flex: 1 },

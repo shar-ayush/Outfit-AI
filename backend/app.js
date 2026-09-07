@@ -44,23 +44,51 @@ if (process.env.NODE_ENV !== 'production') {
     const startTime = Date.now()
     const timestamp = new Date().toLocaleTimeString()
 
-    // Helper to safely format body (truncate huge base64/long strings for readability)
-    const sanitizeData = (data) => {
+    // Helper to safely format body (truncate huge base64/long strings, prevent circular refs, depth limit, and Mongoose docs)
+    const sanitizeData = (data, seen = new WeakSet(), depth = 0) => {
       if (!data || typeof data !== 'object') return data
+      if (depth > 4) return '[Object]'
+      if (seen.has(data)) return '[Circular]'
+
+      seen.add(data)
+
       try {
-        const copy = Array.isArray(data) ? [...data] : { ...data }
-        for (const [key, val] of Object.entries(copy)) {
+        let clean = data
+        if (typeof data.toJSON === 'function') {
+          try {
+            clean = data.toJSON()
+          } catch {
+            clean = data
+          }
+        } else if (typeof data.toObject === 'function') {
+          try {
+            clean = data.toObject()
+          } catch {
+            clean = data
+          }
+        }
+
+        if (!clean || typeof clean !== 'object') return clean
+
+        if (Array.isArray(clean)) {
+          return clean.map(item => sanitizeData(item, seen, depth + 1))
+        }
+
+        const copy = {}
+        for (const [key, val] of Object.entries(clean)) {
           if (typeof val === 'string' && val.length > 250) {
             copy[key] = `${val.substring(0, 50)}... [truncated, ${val.length} chars]`
           } else if (key.toLowerCase().includes('password')) {
             copy[key] = '********'
           } else if (typeof val === 'object' && val !== null) {
-            copy[key] = sanitizeData(val)
+            copy[key] = sanitizeData(val, seen, depth + 1)
+          } else {
+            copy[key] = val
           }
         }
         return copy
       } catch {
-        return data
+        return '[Unserializable]'
       }
     }
 
@@ -82,16 +110,24 @@ if (process.env.NODE_ENV !== 'production') {
       console.log('📦 Request Body:', JSON.stringify(sanitizeData(req.body), null, 2))
     }
 
-    // Intercept res.json to log the response
+    // Intercept res.json to log the response safely
     const originalJson = res.json
     res.json = function (body) {
-      const duration = Date.now() - startTime
-      const statusColor = res.statusCode >= 500 ? '❌' : res.statusCode >= 400 ? '⚠️' : '✅'
+      try {
+        const duration = Date.now() - startTime
+        const statusColor = res.statusCode >= 500 ? '❌' : res.statusCode >= 400 ? '⚠️' : '✅'
 
-      console.log(`-------------------- API RESPONSE [${statusColor} ${res.statusCode}] (${duration}ms) --------------------`)
-      console.log(`📍 ${req.method} ${req.originalUrl}`)
-      console.log('📤 Response Data:', JSON.stringify(sanitizeData(body), null, 2))
-      console.log(`========================================================================\n`)
+        console.log(`-------------------- API RESPONSE [${statusColor} ${res.statusCode}] (${duration}ms) --------------------`)
+        console.log(`📍 ${req.method} ${req.originalUrl}`)
+        try {
+          console.log('📤 Response Data:', JSON.stringify(sanitizeData(body), null, 2))
+        } catch (logErr) {
+          console.log('📤 Response Data: [Logging serialization error:', logErr.message, ']')
+        }
+        console.log(`========================================================================\n`)
+      } catch {
+        // Logging should never crash response
+      }
 
       return originalJson.call(this, body)
     }

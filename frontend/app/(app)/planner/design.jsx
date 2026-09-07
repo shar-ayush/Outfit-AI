@@ -793,22 +793,20 @@ const styles = StyleSheet.create({
 
   // Category filter
   categoryScrollWrapper: {
-    flexGrow: 0,
+    height: 52,
     marginBottom: spacing.stackSm,
   },
   categoryScroll: {
     paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.stackSm,
-    gap: spacing.stackSm,
-    flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.stackSm,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    height: 38,
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.surfaceContainerHigh,
@@ -820,7 +818,7 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     marginLeft: 6,
-    includeFontPadding: false,
+    fontFamily: 'Inter_500Medium',
   },
 
   // Search
@@ -1094,11 +1092,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    height: 38,
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.surfaceContainerHigh,
+    backgroundColor: colors.surfaceContainerLowest,
   },
   occasionChipActive: {
     backgroundColor: colors.primary,
@@ -1106,7 +1105,7 @@ const styles = StyleSheet.create({
   },
   occasionLabel: {
     marginLeft: 6,
-    includeFontPadding: false,
+    fontFamily: 'Inter_500Medium',
   },
   saveButton: {
     marginTop: spacing.stackSm,

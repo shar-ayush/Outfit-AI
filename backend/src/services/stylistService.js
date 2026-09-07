@@ -1,12 +1,49 @@
 import ConversationSession from '../models/ConversationSession.js'
-import { getOutfitRecommendations } from './outfitService.js'
+import DailyRecommendation from '../models/DailyRecommendation.js'
+import { getOutfitRecommendations, buildDailyStylistNote } from './outfitService.js'
+import { extractIntent } from './ai/intentService.js'
+import { mergeIntent } from '../utils/intentMerge.js'
 import { getGenerativeModel } from '../config/gemini.js'
 import ApiError from '../utils/ApiError.js'
 
 // ─────────────────────────────────────────────
+// Builds an honest chat message that surfaces any
+// constraint substitutions the pipeline made, rather
+// than a generic "here are your outfits" line.
+// This is the payoff of Steps 5/6 — the data existed,
+// it just wasn't being said out loud until now.
+// ─────────────────────────────────────────────
+
+function buildOutfitResponseMessage(outfits, requestedCount = 3) {
+  if (outfits.length === 0) return null
+
+  let base = `Here are ${outfits.length} distinct outfits based on your wardrobe.`
+  if (outfits.length === 1) {
+    if (requestedCount === 1) {
+      base = 'Here is an outfit tailored to your request.'
+    } else {
+      base = 'Here is the best outfit matching your request from your current wardrobe.'
+    }
+  }
+
+  const substitutions = outfits
+    .map((outfit, i) => ({ index: i, note: outfit.substitutionNote }))
+    .filter(o => o.note)
+
+  if (substitutions.length === 0) return base
+
+  const notes = substitutions
+    .map(s => (outfits.length > 1 ? `Outfit ${s.index + 1}: ${s.note}` : s.note))
+    .join(' ')
+
+  return `${base} A couple of notes on fit to your request — ${notes}`
+}
+
+// ─────────────────────────────────────────────
 // Handle a stylist chat message
-// The stylist chat IS the outfit recommendation
-// system — same pipeline, with conversation memory
+// Step 1 update: routing + intent merge now happen HERE,
+// in a single extractIntent call, instead of a separate
+// keyword-based classifyMessage() step.
 // ─────────────────────────────────────────────
 
 export async function handleStylistMessage({
@@ -15,49 +52,98 @@ export async function handleStylistMessage({
   sessionId    = null,
   weatherContext = null,
 }) {
-  // Detect if this is a pure question vs an outfit request
-  const isOutfitRequest = await classifyMessage(message)
-
-  if (!isOutfitRequest) {
-    // Pure fashion question — answer without generating outfits
-    return handleFashionQuestion({ userId, message, sessionId })
+  // Load session once — reused for both branches below
+  let session = null
+  if (sessionId) {
+    session = await ConversationSession.findById(sessionId)
   }
 
+  const conversationHistory = session?.messages || []
+
+  // Single Gemini call — classifies AND extracts intent
+  const rawIntent = await extractIntent(message, conversationHistory)
+
+  // Merge onto prior session intent if this is a refinement
+  const intent = mergeIntent(session?.lastIntent, rawIntent)
+
+  if (intent.messageType === 'fashion_question') {
+    return handleFashionQuestion({ userId, message, session, sessionId })
+  }
+
+  const targetCount = intent.requestedCount || 3
+
   // Outfit request — run full recommendation pipeline
-  // Session management handled inside getOutfitRecommendations
+  // Pass the already-extracted+merged intent down so
+  // getOutfitRecommendations doesn't call Gemini again
   const result = await getOutfitRecommendations({
     userId,
     query:   message,
     sessionId,
-    count:   3,
+    session,
+    precomputedIntent: intent,
+    count:   targetCount,
     weatherContext,
   })
 
+  // If this session is linked to today's daily recommendation, or if the user
+  // is customizing today's look, sync the newly recommended outfit back to
+  // today's DailyRecommendation on the homescreen.
+  let dailyUpdated = false
+  if (result.outfits && result.outfits.length > 0) {
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const effectiveSessionId = result.sessionId || sessionId || session?._id
+
+    let dailyRec = await DailyRecommendation.findOne({
+      userId,
+      sessionId: effectiveSessionId,
+    })
+
+    // If not matched by sessionId directly, check if the session is refining today's outfit
+    if (!dailyRec && (intent.isRefinement || /today/i.test(message))) {
+      dailyRec = await DailyRecommendation.findOne({
+        userId,
+        date: todayStr,
+      })
+    }
+
+    if (dailyRec) {
+      const chosenOutfit = result.outfits[0]
+      const d = new Date(dailyRec.date || todayStr)
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' })
+      const stylistMessage = buildDailyStylistNote(chosenOutfit, dayName)
+
+      dailyRec.outfitId = chosenOutfit.outfitId || chosenOutfit._id
+      dailyRec.recommendationId = chosenOutfit.recommendationId || null
+      if (stylistMessage) {
+        dailyRec.message = stylistMessage
+      }
+      if (effectiveSessionId && !dailyRec.sessionId) {
+        dailyRec.sessionId = effectiveSessionId
+      }
+      await dailyRec.save()
+      dailyUpdated = true
+    }
+  }
+
   return {
-    type:      'outfits',
-    outfits:   result.outfits,
-    sessionId: result.sessionId,
-    intent:    result.intent,
-    message:   result.outfits.length > 0
-      ? `Here are ${result.outfits.length} outfits based on your wardrobe.`
+    type:         'outfits',
+    outfits:      result.outfits,
+    sessionId:    result.sessionId,
+    intent:       result.intent,
+    dailyUpdated,
+    message:      result.outfits.length > 0
+      ? buildOutfitResponseMessage(result.outfits, targetCount)
       : result.message,
   }
 }
 
 // ─────────────────────────────────────────────
 // Answer a general fashion question
-// without generating outfit combinations
-// e.g. "What is smart casual?" or "How do I care for linen?"
+// Unchanged in logic — just accepts an already-loaded session now
 // ─────────────────────────────────────────────
 
-async function handleFashionQuestion({ userId, message, sessionId }) {
+async function handleFashionQuestion({ userId, message, session, sessionId }) {
   const model = getGenerativeModel()
-
-  // Load session for conversation context
-  let session = null
-  if (sessionId) {
-    session = await ConversationSession.findById(sessionId)
-  }
 
   const history = session?.messages.slice(-6) || []
   const historyText = history
@@ -78,7 +164,6 @@ Keep your answer under 150 words. Be conversational and friendly.
   const result = await model.generateContent(prompt)
   const answer = result.response.text()
 
-  // Update session with this exchange
   if (session) {
     session.messages.push(
       { role: 'user',      content: message },
@@ -87,7 +172,6 @@ Keep your answer under 150 words. Be conversational and friendly.
     session.messages = session.messages.slice(-20)
     await session.save()
   } else if (sessionId) {
-    // Session ID provided but not found — create new
     session = await ConversationSession.create({
       userId,
       messages: [
@@ -103,42 +187,6 @@ Keep your answer under 150 words. Be conversational and friendly.
     outfits:   [],
     sessionId: session?._id || sessionId,
   }
-}
-
-// ─────────────────────────────────────────────
-// Classify whether a message is an outfit request
-// or a general fashion question
-// Keeps it simple — keyword based + Gemini fallback
-// ─────────────────────────────────────────────
-
-async function classifyMessage(message) {
-  const outfitKeywords = [
-    'wear', 'outfit', 'dress', 'suggest', 'recommend',
-    'what should i', 'what to wear', 'style me', 'look',
-    'going to', 'attending', 'interview', 'party', 'date',
-    'casual', 'formal', 'wedding', 'office', 'gym', 'college',
-    'more casual', 'something else', 'different', 'show me',
-  ]
-
-  const lower = message.toLowerCase()
-  const hasKeyword = outfitKeywords.some(kw => lower.includes(kw))
-
-  // Fast path — keyword match
-  if (hasKeyword) return true
-
-  // Short messages are likely follow-ups — treat as outfit requests
-  if (message.trim().split(' ').length <= 5) return true
-
-  // Fallback — pure questions usually start with 'what is', 'how', 'why', 'can you explain'
-  const questionPatterns = [
-    /^what is/i,
-    /^how (do|does|can|should)/i,
-    /^why (do|does|is)/i,
-    /^can you explain/i,
-    /^tell me about/i,
-  ]
-
-  return !questionPatterns.some(pattern => pattern.test(message.trim()))
 }
 
 // ─────────────────────────────────────────────
@@ -167,13 +215,64 @@ export async function getOrCreateSession(userId, sessionId = null) {
 
 export async function getSessionHistory(sessionId, userId) {
   const session = await ConversationSession.findOne({
-    _id:    sessionId,
+    _id: sessionId,
     userId,
-  }).lean()
+  })
+    .populate({
+      path: 'messages.outfitIds',
+      populate: {
+        path: 'items.clothId',
+        select: '-embedding',
+      },
+    })
+    .lean()
 
   if (!session) throw new ApiError(404, 'Session not found')
 
-  return session
+  const formattedMessages = (session.messages || []).map(msg => {
+    if (msg.outfitIds && msg.outfitIds.length > 0 && typeof msg.outfitIds[0] === 'object') {
+      const outfits = msg.outfitIds.filter(Boolean).map(o => ({
+        outfitId: o._id?.toString(),
+        _id: o._id?.toString(),
+        outfitName: o.outfitName,
+        whyItWorks: o.whyItWorks,
+        stylingTip: o.stylingTip,
+        vibe: o.vibe,
+        occasion: o.occasion,
+        formality: o.formality,
+        isSaved: Boolean(o.isSaved),
+        items: (o.items || []).map(it => {
+          const c = it.clothId || it
+          return {
+            _id: c._id?.toString ? c._id.toString() : c._id,
+            imageUrl: c.imageUrl,
+            category: c.category,
+            subCategory: c.subCategory,
+            color: c.color,
+            style: c.style,
+            formality: c.formality,
+            role: it.role || c.category,
+          }
+        }),
+      }))
+
+      return {
+        ...msg,
+        type: 'outfits',
+        outfits,
+      }
+    }
+
+    return {
+      ...msg,
+      type: msg.role === 'assistant' ? 'text' : undefined,
+    }
+  })
+
+  return {
+    ...session,
+    messages: formattedMessages,
+  }
 }
 
 // ─────────────────────────────────────────────

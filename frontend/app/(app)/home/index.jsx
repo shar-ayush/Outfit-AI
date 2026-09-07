@@ -17,9 +17,9 @@
 // is scoped to this screen instance; it's intentionally not persisted to
 // stylistStore since the Home daily card isn't a "conversation".
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import Screen from '@/components/common/Screen';
 import Text from '@/components/common/Text';
@@ -65,11 +65,20 @@ export default function HomeScreen() {
   const {
     data: dailyData,
     isLoading: dailyLoading,
+    refetch: refetchDaily,
   } = useDailyOutfit(todayDateStr, weatherContext, {
     enabled: !weatherLoading,
   });
 
   const currentOutfit = dailyData?.outfit || null;
+
+  // When returning to home screen (e.g. after customizing in stylist chat),
+  // immediately pull the latest daily recommendation
+  useFocusEffect(
+    useCallback(() => {
+      refetchDaily();
+    }, [refetchDaily])
+  );
 
   // Today's planned outfit
   const { data: todayPlan, isLoading: todayPlanLoading } = useDayPlan(todayDateStr);
@@ -176,6 +185,35 @@ export default function HomeScreen() {
     );
   };
 
+  const handleWeatherRefresh = () => {
+    refreshDailyOutfit.mutate(
+      {
+        date: todayDateStr,
+        weatherContext,
+        reason: weatherNudge?.type || null,
+      },
+      {
+        onSuccess: () => {
+          showToast('Adjusted recommendation for current weather', 'success');
+        },
+        onError: () => {
+          showToast('Could not refresh suggestion right now', 'error');
+        },
+      }
+    );
+  };
+
+  const handleAskStylist = () => {
+    if (dailyData?.sessionId) {
+      router.push({
+        pathname: '/(app)/stylist',
+        params: { sessionId: dailyData.sessionId },
+      });
+    } else {
+      router.push('/(app)/stylist');
+    }
+  };
+
   const sleepingItems = sleeping?.items || [];
   const sleepingCount = sleeping?.count || 0;
 
@@ -208,16 +246,6 @@ export default function HomeScreen() {
         </Pressable>
       )}
 
-      {/* Today's Planned Outfit Card */}
-      <TodayPlannedOutfitCard
-        plan={todayPlan}
-        isLoading={todayPlanLoading}
-        onOpenPlan={() => router.push(`/(app)/planner/${todayDateStr}`)}
-        onViewOutfitDetail={(outfitId) =>
-          router.push({ pathname: '/(modals)/outfit-detail', params: { outfitId } })
-        }
-      />
-
       <View style={styles.section}>
         <DailyOutfitCard
           outfit={currentOutfit}
@@ -229,9 +257,19 @@ export default function HomeScreen() {
           onWornToday={handleWornToday}
           onSave={handleSave}
           onRefresh={handleRefresh}
+          onWeatherRefresh={handleWeatherRefresh}
+          onAskStylist={handleAskStylist}
         />
       </View>
-
+      {/* Today's Planned Outfit Card */}
+      <TodayPlannedOutfitCard
+        plan={todayPlan}
+        isLoading={todayPlanLoading}
+        onOpenPlan={() => router.push(`/(app)/planner/${todayDateStr}`)}
+        onViewOutfitDetail={(outfitId) =>
+          router.push({ pathname: '/(modals)/outfit-detail', params: { outfitId } })
+        }
+      />
       <View style={styles.section}>
         <QuickActions onNavigate={(route) => router.push(route)} />
       </View>

@@ -28,6 +28,7 @@ import Screen from '@/components/common/Screen';
 import Text from '@/components/common/Text';
 import Button from '@/components/common/Button';
 import Tag from '@/components/common/Tag';
+import Modal from '@/components/common/Modal';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import ErrorState from '@/components/common/ErrorState';
 import OutfitScore from '@/components/outfit/OutfitScore';
@@ -47,6 +48,7 @@ export default function OutfitDetailModal() {
   const outfitAction = useOutfitAction();
   const deleteOutfit = useDeleteOutfit();
   const [actionLoading, setActionLoading] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   if (isLoading) return <LoadingSpinner fullScreen />;
   if (isError || !outfit) return <ErrorState onRetry={refetch} />;
@@ -58,11 +60,11 @@ export default function OutfitDetailModal() {
   // that independently chose slightly different naming.
   const rankingScore = recommendation?.scores
     ? {
-        total: recommendation.scores.final,
-        algorithm: recommendation.scores.compatibility,
-        personalization: recommendation.scores.personalization,
-        noveltyPenalty: recommendation.scores.novelty,
-      }
+      total: recommendation.scores.final,
+      algorithm: recommendation.scores.compatibility,
+      personalization: recommendation.scores.personalization,
+      noveltyPenalty: recommendation.scores.novelty,
+    }
     : null;
 
   const handleSaveToggle = () => {
@@ -106,6 +108,24 @@ export default function OutfitDetailModal() {
           refetch();
         },
         onError: () => showToast('Could not update this outfit', 'error'),
+        onSettled: () => setActionLoading(null),
+      }
+    );
+  };
+
+  const handleDeletePermanent = () => {
+    setActionLoading('deletePermanent');
+    deleteOutfit.mutate(
+      { outfitId, permanent: true },
+      {
+        onSuccess: () => {
+          showToast('Outfit permanently deleted', 'success');
+          setDeleteConfirmOpen(false);
+          router.back();
+        },
+        onError: () => {
+          showToast('Could not delete outfit', 'error');
+        },
         onSettled: () => setActionLoading(null),
       }
     );
@@ -220,6 +240,41 @@ export default function OutfitDetailModal() {
             {outfit.isSaved ? 'Remove Saved' : 'Save'}
           </Button>
         </View>
+
+        <Button
+          variant="secondary"
+          icon="trash-can-outline"
+          onPress={() => setDeleteConfirmOpen(true)}
+          style={styles.deleteButton}
+          textStyle={styles.deleteButtonText}
+        >
+          Delete Item Permanently
+        </Button>
+
+        <Modal visible={deleteConfirmOpen} onRequestClose={() => setDeleteConfirmOpen(false)}>
+          <Text variant="titleMd">Delete permanently?</Text>
+          <Text variant="bodyMd" color="secondary" style={styles.modalDescription}>
+            This will permanently delete this outfit from your saved collection. This action cannot be undone.
+          </Text>
+          <View style={styles.modalActions}>
+            <Button
+              variant="secondary"
+              onPress={() => setDeleteConfirmOpen(false)}
+              style={styles.modalButton}
+              fullWidth={false}
+            >
+              Cancel
+            </Button>
+            <Button
+              onPress={handleDeletePermanent}
+              loading={actionLoading === 'deletePermanent'}
+              style={[styles.modalButton, { backgroundColor: colors.error }]}
+              fullWidth={false}
+            >
+              Delete
+            </Button>
+          </View>
+        </Modal>
       </View>
     </Screen>
   );
@@ -281,6 +336,24 @@ const styles = StyleSheet.create({
     marginRight: spacing.stackMd,
   },
   itemRowInfo: { flex: 1 },
-  actionsRow: { flexDirection: 'row', gap: spacing.stackSm, marginBottom: spacing.stackLg },
+  actionsRow: { flexDirection: 'row', gap: spacing.stackSm, marginBottom: spacing.stackMd },
   actionFlex: { flex: 1 },
+  deleteButton: {
+    marginBottom: spacing.stackXl,
+    borderColor: colors.error,
+  },
+  deleteButtonText: {
+    color: colors.error,
+  },
+  modalDescription: {
+    marginTop: spacing.stackSm,
+    marginBottom: spacing.stackLg,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.inlineMd,
+  },
+  modalButton: {
+    flex: 1,
+  },
 });

@@ -6,10 +6,57 @@ const VALID = {
   season:     ['summer','winter','spring','autumn'],
   weather:    ['hot','cold','mild','rain'],
   style:      ['casual','formal','streetwear','minimal','sporty','ethnic','bohemian','preppy','classic'],
+  slots:      ['top','bottom','footwear','outerwear','accessory','full_body'],
+  messageType: ['outfit_request', 'fashion_question'],
+}
+
+function validateSlotConstraint(raw) {
+  if (!raw || typeof raw !== 'object') return null
+
+  const color       = typeof raw.color === 'string' ? raw.color.toLowerCase().trim() : null
+  const subCategory = typeof raw.subCategory === 'string' ? raw.subCategory.toLowerCase().trim() : null
+  const pattern     = typeof raw.pattern === 'string' ? raw.pattern.toLowerCase().trim() : null
+
+  // A slot constraint with nothing set is the same as no constraint — return null
+  if (!color && !subCategory && !pattern) return null
+
+  return { color, subCategory, pattern }
+}
+
+function validateSlotConstraints(raw) {
+  if (!raw || typeof raw !== 'object') return {}
+
+  const result = {}
+  for (const slot of VALID.slots) {
+    const constraint = validateSlotConstraint(raw[slot])
+    if (constraint) result[slot] = constraint
+  }
+  return result
+}
+
+function validateExcludeConstraints(raw) {
+  if (!Array.isArray(raw)) return []
+
+  return raw
+    .filter(item =>
+      item &&
+      VALID.slots.includes(item.slot) &&
+      ['color', 'subCategory', 'pattern'].includes(item.attribute) &&
+      typeof item.value === 'string' && item.value.trim().length > 0
+    )
+    .map(item => ({
+      slot:      item.slot,
+      attribute: item.attribute,
+      value:     item.value.toLowerCase().trim(),
+    }))
 }
 
 function validateIntent(raw) {
   return {
+    messageType: VALID.messageType.includes(raw.messageType)
+      ? raw.messageType
+      : 'outfit_request', // default — safer to over-trigger outfit generation than under-trigger it
+
     occasions: VALID.occasions.includes(raw.occasions)
       ? raw.occasions
       : null,
@@ -30,51 +77,122 @@ function validateIntent(raw) {
       ? raw.style.filter(s => VALID.style.includes(s))
       : [],
 
+    slotConstraints:     validateSlotConstraints(raw.slotConstraints),
+    resetSlots:          Array.isArray(raw.resetSlots) ? raw.resetSlots.filter(s => VALID.slots.includes(s)) : [],
+    requestedCount:      typeof raw.requestedCount === 'number' && raw.requestedCount >= 1 && raw.requestedCount <= 3 ? raw.requestedCount : 3,
+    excludeConstraints:  validateExcludeConstraints(raw.excludeConstraints),
+    moodDescriptor:      typeof raw.moodDescriptor === 'string' && raw.moodDescriptor.trim().length > 0
+      ? raw.moodDescriptor.trim()
+      : null,
+
     isRefinement:          raw.isRefinement === true,
     refinementInstruction: raw.refinementInstruction || null,
   }
 }
 
 // ─────────────────────────────────────────────
-// Extract structured intent from natural language
+// Extract structured intent + route the message
 // Conversation history allows follow-up queries to inherit context
 // e.g. "make it more casual" correctly inherits previous occasion
+// This single call now ALSO decides: is this an outfit request
+// or a general fashion question? (replaces the old keyword-based
+// classifyMessage() in stylistService.js)
 // ─────────────────────────────────────────────
 
 export async function extractIntent(userMessage, conversationHistory = []) {
   const model = getStructuredModel()
 
-  // Include last 4 messages as context for follow-up detection
   const recentHistory = conversationHistory
     .slice(-4)
     .map(m => `${m.role}: ${m.content}`)
     .join('\n')
 
   const prompt = `
-Extract outfit intent from the user's message.
+Analyze the user's message for a personal stylist chat app.
+
 ${recentHistory ? `\nConversation context:\n${recentHistory}\n` : ''}
 Current message: "${userMessage}"
 
-Rules:
-- If the message is a follow-up or refinement ("more casual", "something else", "what about dinner"), inherit and modify intent from conversation context.
-- "isRefinement" should be true if the user is modifying a previous suggestion.
-- "refinementInstruction" should capture exactly what they want changed.
+STEP 1 — Classify the message:
+"messageType" is "outfit_request" if the user wants outfit suggestions, is describing
+an occasion, mentions specific clothing items/colors, or is refining a previous
+suggestion. It is "fashion_question" ONLY for general fashion knowledge questions
+that do NOT require looking at the user's wardrobe (e.g. "what is smart casual?",
+"how do I care for linen?", "is it okay to wear white after labor day?").
+When in doubt, prefer "outfit_request".
 
-Return ONLY valid JSON:
+STEP 2 — If outfit_request, extract ALL of the following:
+- occasions, formality, season, weatherSuitability, style — as before
+- "requestedCount": integer 1, 2, or 3.
+  - Set 1 if user asks for "an outfit", "just 1 option", "one look", "single outfit", or when SWAPPING/CHANGING an item in the current outfit.
+  - Set 2 if user asks for "2 options", "a couple of looks", "two outfits".
+  - Set 3 for "3 outfits", "some outfits", "options", or when no number is specified.
+- "slotConstraints": ONLY populate a slot (top/bottom/footwear/outerwear/accessory/full_body)
+  when the user EXPLICITLY named a color, garment type, or pattern for that slot, OR when carrying over items in an item swap.
+- "resetSlots": array of slot names (from [top, bottom, footwear, outerwear, accessory, full_body])
+  where the user explicitly asks to CHANGE, REPLACE, or TRY SOMETHING ELSE for that slot
+  (e.g. "suggest something else in top", "different top", "change shirt", "any top",
+  "try another footwear", "different jacket").
+  CRITICAL: If the user says "only [slot]" or "just [slot]" (e.g. "I want only black top", "just show me outfits with sneakers"),
+  they want to ANCHOR on that slot and free up the other slots. Include all other previously constrained slots in "resetSlots" so the system can explore versatile combinations!
+  DO NOT put slots into resetSlots when the user is simply swapping an item (e.g. "swap with black bottom").
+- "ITEM SWAP / IN-PLACE REFINEMENT":
+  When the user asks to swap, change, or replace a specific item in the previous outfit (e.g. "Can you swap with black bottom", "swap the skirt with black trousers", "change shoes to sneakers", "can we do black pants instead"):
+  1. The user wants to KEEP the other items from that previous outfit (e.g. keep the same top, footwear, and outerwear) and ONLY replace the mentioned slot!
+  2. Inspect the last assistant message in the Conversation context to identify what was worn. Carry forward those other items into "slotConstraints" so those items stay locked! (e.g. if the previous outfit was cardigan + sweatpants + sandals + jacket, keep top: {color: "black", subCategory: "cardigan"}, footwear: {color: "light blue", subCategory: "sandals"}, outerwear: {color: "burgundy", subCategory: "leather jacket"}).
+  3. Put the new requested item into "slotConstraints" for the swapped slot (e.g. bottom: {color: "black"}).
+  4. Add an exclusion in "excludeConstraints" for the item being replaced (e.g. {slot: "bottom", attribute: "color", value: "beige"}).
+  5. Leave "resetSlots" as [] (do NOT put the other slots in resetSlots!).
+  6. Set "requestedCount" to 1 (the user is tweaking a single outfit).
+- "excludeConstraints": array of { slot, attribute, value } for anything the user
+  said NOT to include (e.g. "no heels" → {slot: "footwear", attribute: "subCategory", value: "heels"};
+  "nothing black" → {slot: <any if unspecified>, attribute: "color", value: "black"}.
+  If the user says "something else in top" or "different top" after a specific top (e.g. pink) was suggested,
+  also add an exclusion for that previous top color/type so the same item is not repeated!).
+- "moodDescriptor": a short phrase capturing any qualitative/emotional request that
+  doesn't map to a discrete field (e.g. "feel powerful", "dark academia vibe",
+  "effortless but put-together"). Null if nothing like this was said.
+- "isRefinement": true if this message modifies a previous suggestion rather than
+  starting a new request. Only refine fields that changed — leave the rest untouched
+  in your output (the app will merge this with prior context, so it's fine to only
+  return what changed for isRefinement cases).
+- "refinementInstruction": plain text of what changed, if isRefinement is true.
+
+Return ONLY valid JSON matching this shape:
 {
+  "messageType": "outfit_request" | "fashion_question",
   "occasions": one of [casual, formal, party, office, date, gym, travel, wedding, beach, college] or null,
   "formality": one of [casual, semi-formal, formal] or null,
   "season": one of [summer, winter, spring, autumn] or null,
   "weatherSuitability": one of [hot, cold, mild, rain] or null,
   "style": array from [casual, formal, streetwear, minimal, sporty, ethnic, bohemian, preppy, classic],
+  "slotConstraints": {
+    "top":       { "color": string|null, "subCategory": string|null, "pattern": string|null } | null,
+    "bottom":    { "color": string|null, "subCategory": string|null, "pattern": string|null } | null,
+    "footwear":  { "color": string|null, "subCategory": string|null, "pattern": string|null } | null,
+    "outerwear": { "color": string|null, "subCategory": string|null, "pattern": string|null } | null
+  },
+  "resetSlots": ["top" | "bottom" | "footwear" | "outerwear" | "accessory" | "full_body"],
+  "requestedCount": 1 | 2 | 3,
+  "excludeConstraints": [{ "slot": string, "attribute": "color"|"subCategory"|"pattern", "value": string }],
+  "moodDescriptor": string or null,
   "isRefinement": boolean,
   "refinementInstruction": string or null
 }
 
 Examples:
-- "what to wear for my interview tomorrow" → {"occasions":"office","formality":"formal","season":null,"weatherSuitability":null,"style":["formal","minimal"],"isRefinement":false,"refinementInstruction":null}
-- "make it more casual" → {"occasions":"office","formality":"casual","season":null,"weatherSuitability":null,"style":["casual"],"isRefinement":true,"refinementInstruction":"make it more casual"}
-- "beach party this weekend, really hot" → {"occasions":"beach","formality":"casual","season":"summer","weatherSuitability":"hot","style":["casual","sporty"],"isRefinement":false,"refinementInstruction":null}
+- "suggest me an outfit with pink top white skirt and black footwear" →
+  {"messageType":"outfit_request","occasions":"casual","formality":"casual","season":null,"weatherSuitability":null,"style":["casual"],"slotConstraints":{"top":{"color":"pink","subCategory":null,"pattern":null},"bottom":{"color":"white","subCategory":"skirt","pattern":null},"footwear":{"color":"black","subCategory":null,"pattern":null}},"resetSlots":[],"requestedCount":3,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
+- "Can you swap with black bottom" (after assistant: Outfit 1: black layered cardigan and shirt, beige sweatpants, light blue sandals, burgundy leather jacket) →
+  {"messageType":"outfit_request","occasions":"casual","formality":"casual","season":"autumn","weatherSuitability":"rain","style":["casual"],"slotConstraints":{"top":{"color":"black","subCategory":"cardigan","pattern":null},"bottom":{"color":"black","subCategory":null,"pattern":null},"footwear":{"color":"light blue","subCategory":"sandals","pattern":null},"outerwear":{"color":"burgundy","subCategory":"leather jacket","pattern":null}},"resetSlots":[],"requestedCount":1,"excludeConstraints":[{"slot":"bottom","attribute":"color","value":"beige"}],"moodDescriptor":null,"isRefinement":true,"refinementInstruction":"swap beige bottom with black bottom while keeping cardigan, sandals, and jacket"}
+- "I want only black top" (after pink top + black trousers + sandals) →
+  {"messageType":"outfit_request","occasions":"casual","formality":"casual","season":null,"weatherSuitability":null,"style":[],"slotConstraints":{"top":{"color":"black","subCategory":null,"pattern":null}},"resetSlots":["bottom","footwear"],"requestedCount":3,"excludeConstraints":[{"slot":"top","attribute":"color","value":"pink"}],"moodDescriptor":null,"isRefinement":true,"refinementInstruction":"anchor on black top, explore different bottoms and shoes"}
+- "Can you suggest something else in top with white skirt or trousers" (after pink top was recommended) →
+  {"messageType":"outfit_request","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{"bottom":{"color":"white","subCategory":null,"pattern":null}},"resetSlots":["top"],"requestedCount":3,"excludeConstraints":[{"slot":"top","attribute":"color","value":"pink"}],"moodDescriptor":null,"isRefinement":true,"refinementInstruction":"suggest different top other than pink with white skirt or trousers"}
+- "Give me just 1 quick casual look for a date" →
+  {"messageType":"outfit_request","occasions":"date","formality":"casual","season":null,"weatherSuitability":null,"style":[],"slotConstraints":{},"resetSlots":[],"requestedCount":1,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
+- "what is smart casual?" →
+  {"messageType":"fashion_question","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{},"resetSlots":[],"requestedCount":3,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
   `
 
   try {
@@ -82,13 +200,18 @@ Examples:
     const raw    = JSON.parse(result.response.text())
     return validateIntent(raw)
   } catch {
-    // Return empty intent — retrieval handles gracefully
+    // Safe fallback — default to outfit_request so the pipeline still
+    // attempts a recommendation rather than silently doing nothing
     return {
+      messageType:        'outfit_request',
       occasions:          null,
       formality:          null,
       season:             null,
       weatherSuitability: null,
       style:              [],
+      slotConstraints:    {},
+      excludeConstraints: [],
+      moodDescriptor:     null,
       isRefinement:       false,
       refinementInstruction: null,
     }

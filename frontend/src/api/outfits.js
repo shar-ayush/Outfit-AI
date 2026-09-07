@@ -24,10 +24,11 @@ export async function getDailyOutfit({ date, weatherContext = null }) {
   return data.data; // { outfit, recommendationId, weatherAtRecommendation, message, sessionId, isNew }
 }
 
-export async function refreshDailyOutfit({ date, weatherContext = null }) {
+export async function refreshDailyOutfit({ date, weatherContext = null, reason = null }) {
   const { data } = await apiClient.post('/outfits/daily/refresh', {
     date,
     weatherContext,
+    reason,
   });
   return data.data;
 }
@@ -68,7 +69,9 @@ export async function getRecommendationForOutfit(outfitId) {
   return data.data.recommendation;
 }
 
-export async function deleteOutfit(outfitId) {
-  const { data } = await apiClient.delete(`/outfits/${outfitId}`);
+export async function deleteOutfit(outfitId, { permanent = false } = {}) {
+  const { data } = await apiClient.delete(
+    permanent ? `/outfits/${outfitId}/permanent` : `/outfits/${outfitId}`
+  );
   return data.data;
 }

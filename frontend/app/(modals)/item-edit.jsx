@@ -15,8 +15,9 @@ import Text from '@/components/common/Text';
 import Input from '@/components/common/Input';
 import Button from '@/components/common/Button';
 import Tag from '@/components/common/Tag';
+import Modal from '@/components/common/Modal';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
-import { useClothItem, useUpdateCloth } from '@/hooks/useWardrobe';
+import { useClothItem, useUpdateCloth, useDeleteClothPermanent } from '@/hooks/useWardrobe';
 import { useUIStore } from '@/stores';
 import { OCCASIONS, SEASONS, FORMALITY_FILTERS } from '@/constants/categories';
 import { colors, spacing, radius, typography } from '@/theme';
@@ -28,8 +29,10 @@ export default function ItemEditModal() {
 
   const { data: cloth, isLoading } = useClothItem(clothId);
   const updateCloth = useUpdateCloth(clothId);
+  const deleteClothPermanent = useDeleteClothPermanent();
 
   const [form, setForm] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (cloth && !form) {
@@ -75,6 +78,17 @@ export default function ItemEditModal() {
         onError: () => showToast('Could not save changes', 'error'),
       }
     );
+  };
+
+  const handleDeletePermanent = () => {
+    deleteClothPermanent.mutate(clothId, {
+      onSuccess: () => {
+        showToast('Item deleted from wardrobe', 'success');
+        setDeleteConfirmOpen(false);
+        router.back();
+      },
+      onError: () => showToast('Could not delete this item', 'error'),
+    });
   };
 
   return (
@@ -174,6 +188,41 @@ export default function ItemEditModal() {
       <Button onPress={handleSave} loading={updateCloth.isPending} style={styles.saveButton}>
         Save Changes
       </Button>
+
+      <Button
+        variant="secondary"
+        icon="trash-can-outline"
+        onPress={() => setDeleteConfirmOpen(true)}
+        style={styles.deleteButton}
+        textStyle={styles.deleteButtonText}
+      >
+        Delete Item Permanently
+      </Button>
+
+      <Modal visible={deleteConfirmOpen} onRequestClose={() => setDeleteConfirmOpen(false)}>
+        <Text variant="titleMd">Delete permanently?</Text>
+        <Text variant="bodyMd" color="secondary" style={styles.modalDescription}>
+          This will permanently delete this item and its photos from your wardrobe. This action cannot be undone.
+        </Text>
+        <View style={styles.modalActions}>
+          <Button
+            variant="secondary"
+            onPress={() => setDeleteConfirmOpen(false)}
+            style={styles.modalButton}
+            fullWidth={false}
+          >
+            Cancel
+          </Button>
+          <Button
+            onPress={handleDeletePermanent}
+            loading={deleteClothPermanent.isPending}
+            style={[styles.modalButton, { backgroundColor: colors.error }]}
+            fullWidth={false}
+          >
+            Delete
+          </Button>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -209,5 +258,23 @@ const styles = StyleSheet.create({
     borderTopColor: colors.surfaceContainerHigh,
     marginBottom: spacing.stackLg,
   },
-  saveButton: { marginBottom: spacing.stackXl },
+  saveButton: { marginBottom: spacing.stackMd },
+  deleteButton: {
+    marginBottom: spacing.stackXl,
+    borderColor: colors.error,
+  },
+  deleteButtonText: {
+    color: colors.error,
+  },
+  modalDescription: {
+    marginTop: spacing.stackSm,
+    marginBottom: spacing.stackLg,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.inlineMd,
+  },
+  modalButton: {
+    flex: 1,
+  },
 });

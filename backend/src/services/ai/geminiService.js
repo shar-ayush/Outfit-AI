@@ -192,11 +192,16 @@ Return a JSON array with exactly ${outfits.length} objects:
 }
 
 // ─────────────────────────────────────────────
-// LLM re-ranking — takes top 15 algorithm candidates
-// applies nuanced re-ranking based on user query + conversation history
+// Outfit composition — replaces llmReRankOutfits.
+// Instead of blindly re-ranking a top-15 list, this
+// selects final outfits with explicit awareness of
+// which slots the user locked (slotConstraints) and
+// which they didn't — enforcing variety only on the
+// free slots, and requiring an honest explanation
+// whenever a locked slot couldn't be satisfied exactly.
 // ─────────────────────────────────────────────
 
-export async function llmReRankOutfits(candidates, userQuery, conversationHistory = [], intent, count = 3) {
+export async function composeOutfitsFromPool(candidates, userQuery, conversationHistory = [], intent, count = 3) {
   const model = getStructuredModel()
 
   const recentHistory = conversationHistory.slice(-6).map(m => ({
@@ -204,69 +209,134 @@ export async function llmReRankOutfits(candidates, userQuery, conversationHistor
     content: m.content,
   }))
 
+  const slotConstraints = intent?.slotConstraints || {}
+  const lockedSlots = Object.keys(slotConstraints).filter(slot => {
+    const c = slotConstraints[slot]
+    return c && (c.color || c.subCategory || c.pattern)
+  })
+
   const candidateSummaries = candidates.map((combo, i) => ({
-    index:             i,
-    algorithmScore:    combo.score?.total,
+    index:            i,
+    algorithmScore:   combo.score?.total,
+    harmony:          combo.score?.harmony,
+    vectorSimilarity: combo.score?.vectorSimilarity,
+    constraintMatch:  combo.score?.constraintMatch,
     items: combo.items.map(item => ({
       category:    item.category,
       color:       item.color?.primary,
+      colorFamily: item.color?.colorFamily,
+      subCategory: item.subCategory,
       style:       item.style,
       formality:   item.formality,
       pattern:     item.pattern || 'solid',
-      description: item.embeddingText || `${item.color?.primary} ${item.category}`,
     })),
   }))
 
   const prompt = `
-You are a personal stylist AI. A compatibility algorithm pre-scored these outfit combinations.
-Re-rank and select the best ${count} considering the user's actual intent and nuance.
+You are a personal stylist AI composing final outfit picks from pre-scored candidates.
 
-User message: "${userQuery}"
+User's original message: "${userQuery}"
 Occasion: ${intent?.occasions || 'general'}
 Formality: ${intent?.formality || 'any'}
+Mood/vibe requested: ${intent?.moodDescriptor || 'none'}
 Is refinement: ${intent?.isRefinement || false}
-${intent?.refinementInstruction ? `Refinement: ${intent.refinementInstruction}` : ''}
+${intent?.refinementInstruction ? `Refinement instruction: ${intent.refinementInstruction}` : ''}
 
-${recentHistory.length > 0 ? `
-Conversation context (do not repeat already suggested outfits):
-${JSON.stringify(recentHistory, null, 2)}
-` : ''}
+LOCKED SLOTS (user explicitly requested these — must be honored unless truly no candidate satisfies them):
+${lockedSlots.length > 0 ? JSON.stringify(slotConstraints, null, 2) : 'None — user did not lock any specific slot.'}
 
-Pre-scored candidates:
+EXCLUSIONS (must NEVER appear in any selected outfit):
+${JSON.stringify(intent?.excludeConstraints || [])}
+
+${recentHistory.length > 0 ? `Conversation context:\n${JSON.stringify(recentHistory, null, 2)}\n` : ''}
+
+Pre-scored candidates (already ranked by an algorithm combining color harmony,
+semantic similarity to the query, and constraint match):
 ${JSON.stringify(candidateSummaries, null, 2)}
 
-Select ${count} outfits with genuine variety — different vibes, not just different items.
-If this is a refinement request, honor the user's instruction even if a lower-scored outfit fits better.
+TASK: Select up to ${count} distinct candidates as the final outfits to show the user.
+If the candidate pool has fewer than ${count} genuinely unique outfits that satisfy the constraints, return only as many unique outfits as exist (e.g. 1 or 2). NEVER return duplicate combinations of items.
 
-Return JSON array of exactly ${count} objects:
+RULES:
+1. NEVER select a candidate that violates an EXCLUSION — this is a hard rule, no exceptions.
+2. For LOCKED slots, strongly prefer candidates where that slot's item matches the
+   constraint (shades like "light pink" or "navy blue" fully satisfy "pink" or "blue"
+   constraints — do NOT treat shades as substitutions or mismatches). If NONE of the
+   candidates satisfy a locked slot, you may select the closest available option — but
+   you MUST say so plainly in whyItWorks (e.g. "styled with your white trousers here
+   since no second white skirt was available").
+3. ANCHOR & EXPLORE: When only one garment in the wardrobe satisfies a locked slot (e.g. only one black top exists), KEEP that garment locked across looks, but actively vary the UNCONSTRAINED slots (footwear, bottoms, outerwear, accessories) so the recommended outfits showcase versatile, distinct ways to wear that anchor piece.
+4. ABSOLUTE UNIQUENESS: Every selected outfit must have a distinct set of items. Never select identical sets of clothes with different names.
+5. Give each outfit a different name and a different vibe word.
+6. If this is a refinement where the user asked for "something else" or a different item for a slot (e.g. "something else in top", "different shoes"), DO NOT select outfits that feature the exact same item from that slot shown in the previous conversation. Pick candidates with different pieces for that slot.
+
+Return ONLY a JSON array of up to ${count} objects (at least 1, at most ${count}):
 [
   {
-    "selectedIndex": <number from candidates list>,
+    "selectedIndex": <number from the candidates list>,
     "outfitName": "<4 words max>",
-    "whyItWorks": "<specific to colors and styles in this outfit>",
+    "whyItWorks": "<specific to colors/items in this outfit; MUST mention any constraint substitution>",
     "stylingTip": "<1 concrete actionable tip>",
-    "vibe": "<1 word>"
+    "vibe": "<1 word>",
+    "constraintsSatisfied": <true if all locked slots matched exactly, false if any substitution occurred>,
+    "substitutionNote": "<what was substituted and why, or null if constraintsSatisfied is true>"
   }
 ]
   `
 
   try {
-    const result    = await model.generateContent(prompt)
+    const result     = await model.generateContent(prompt)
     const selections = JSON.parse(result.response.text())
 
-    return selections.map(selection => {
-      const combo = candidates[selection.selectedIndex] || candidates[0]
-      return {
-        items: combo.items,
-        score: combo.score,
+    const seenIndices = new Set()
+    const seenKeys = new Set()
+    const uniqueComposed = []
+
+    for (const selection of (Array.isArray(selections) ? selections : [])) {
+      if (typeof selection.selectedIndex !== 'number') continue
+      if (seenIndices.has(selection.selectedIndex)) continue
+
+      const combo = candidates[selection.selectedIndex]
+      if (!combo) continue
+
+      const key = (combo.items || [])
+        .map(i => (i._id?.toString ? i._id.toString() : String(i._id || i)))
+        .sort()
+        .join('_')
+      if (seenKeys.has(key)) continue
+
+      seenIndices.add(selection.selectedIndex)
+      seenKeys.add(key)
+
+      uniqueComposed.push({
+        items:      combo.items,
+        score:      combo.score,
         outfitName: selection.outfitName || 'Curated Outfit',
         whyItWorks: selection.whyItWorks || 'A well-matched combination.',
         stylingTip: selection.stylingTip || 'Wear with confidence.',
         vibe:       selection.vibe || 'classic',
-      }
-    })
-  } catch {
-    // Fallback — return top scored without LLM reasoning
+        constraintsSatisfied: selection.constraintsSatisfied !== false,
+        substitutionNote:     selection.substitutionNote || null,
+      })
+    }
+
+    if (uniqueComposed.length > 0) {
+      return uniqueComposed
+    }
+
+    return candidates.slice(0, 1).map(combo => ({
+      items:      combo.items,
+      score:      combo.score,
+      outfitName: 'Curated Outfit',
+      whyItWorks: 'A balanced outfit from your wardrobe.',
+      stylingTip: 'Wear with confidence.',
+      vibe:       'classic',
+      constraintsSatisfied: true,
+      substitutionNote:     null,
+    }))
+  } catch (error) {
+    console.error('composeOutfitsFromPool failed, falling back to top algorithmic candidates:', error.message)
+    // Fallback — same safety net pattern as the old llmReRankOutfits catch block
     return candidates.slice(0, count).map((combo, i) => ({
       items:      combo.items,
       score:      combo.score,
@@ -274,6 +344,88 @@ Return JSON array of exactly ${count} objects:
       whyItWorks: `Compatibility score: ${combo.score?.total}/100`,
       stylingTip: 'A solid combination from your wardrobe.',
       vibe:       'classic',
+      constraintsSatisfied: null,
+      substitutionNote:     'Fallback selection — composition step failed, constraints not verified.',
     }))
+  }
+}
+
+// ─────────────────────────────────────────────
+// Single-outfit retry — called only when verification
+// finds an unexplained constraint violation. Re-composes
+// exactly one replacement outfit from the same candidate
+// pool, explicitly excluding the items that just failed,
+// with stricter framing than the original compose prompt.
+// ─────────────────────────────────────────────
+
+export async function recomposeSingleOutfit(candidates, userQuery, intent, excludeItemIds = []) {
+  const model = getStructuredModel()
+  const slotConstraints = intent?.slotConstraints || {}
+
+  // Prefer candidates that don't fully reuse the failed outfit's items,
+  // but fall back to the full pool if nothing else is available —
+  // a small wardrobe may not have a genuinely different option.
+  const filtered = candidates.filter(c =>
+    !c.items.every(item => excludeItemIds.includes(item._id.toString()))
+  )
+  const pool = filtered.length > 0 ? filtered : candidates
+
+  const candidateSummaries = pool.map((combo, i) => ({
+    index:           i,
+    algorithmScore:  combo.score?.total,
+    constraintMatch: combo.score?.constraintMatch,
+    items: combo.items.map(item => ({
+      category:    item.category,
+      color:       item.color?.primary,
+      subCategory: item.subCategory,
+      pattern:     item.pattern || 'solid',
+      style:       item.style,
+      formality:   item.formality,
+    })),
+  }))
+
+  const prompt = `
+A previous outfit selection failed constraint verification with no valid justification —
+it violated the user's request without explaining why. Select ONE replacement that
+STRICTLY satisfies every locked slot below. Only accept an imperfect match if truly no
+exact candidate exists — and if so, you MUST explain the substitution honestly.
+
+User's original message: "${userQuery}"
+Locked slot constraints: ${JSON.stringify(slotConstraints, null, 2)}
+Exclusions (must never appear): ${JSON.stringify(intent?.excludeConstraints || [])}
+
+Candidates:
+${JSON.stringify(candidateSummaries, null, 2)}
+
+Return ONLY one JSON object:
+{
+  "selectedIndex": <number>,
+  "outfitName": "<4 words max>",
+  "whyItWorks": "<specific; must mention any remaining substitution>",
+  "stylingTip": "<1 tip>",
+  "vibe": "<1 word>",
+  "constraintsSatisfied": boolean,
+  "substitutionNote": string or null
+}
+  `
+
+  try {
+    const result    = await model.generateContent(prompt)
+    const selection = JSON.parse(result.response.text())
+    const combo     = pool[selection.selectedIndex] || pool[0]
+
+    return {
+      items:      combo.items,
+      score:      combo.score,
+      outfitName: selection.outfitName || 'Curated Outfit',
+      whyItWorks: selection.whyItWorks || 'A well-matched combination.',
+      stylingTip: selection.stylingTip || 'Wear with confidence.',
+      vibe:       selection.vibe || 'classic',
+      constraintsSatisfied: selection.constraintsSatisfied !== false,
+      substitutionNote:     selection.substitutionNote || null,
+    }
+  } catch (error) {
+    console.error('recomposeSingleOutfit failed:', error.message)
+    return null // caller keeps the original, unresolved outfit rather than losing it entirely
   }
 }

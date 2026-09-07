@@ -1,16 +1,6 @@
-// backend/src/services/recommendation/compatibilityScorer.js
-//
-// FIX (gap #1): scoreOutfit() previously only returned { total, pairsScored
-// }. Outfit.scoreBreakdown has fields for {color, style, formality,
-// occasion, pattern} and outfitService.js writes them from
-// `outfit.score?.color` etc — but that source was never populated, so
-// every outfit's scoreBreakdown was silently empty in the database
-// despite the schema and docs implying otherwise. This version has
-// scoreItemPair return the full per-category breakdown, and scoreOutfit
-// average each category across all pairs, so those fields are finally
-// real. Every other stage of the pipeline (personalizationService,
-// noveltyService) spreads `...score` and only overwrites specific keys,
-// so these new fields survive unchanged all the way to Outfit.scoreBreakdown.
+// ─────────────────────────────────────────────
+// Core compatibility rules (unchanged)
+// ─────────────────────────────────────────────
 
 const COLOR_HARMONY = {
   white:      { pairs: ['black','navy','beige','grey','brown','olive','burgundy','any'], neutral: true },
@@ -60,7 +50,28 @@ const STYLE_ACCEPTABLE_MIX = [
 ]
 
 // ─────────────────────────────────────────────
-// Pair scoring helpers — unchanged
+// NEW — weights for blending harmony with the
+// query-relevance signals (vector similarity,
+// constraint match) into the final outfit score.
+// Harmony still dominates — these are corrective
+// signals, not a replacement for aesthetic scoring.
+// ─────────────────────────────────────────────
+
+const FINAL_SCORE_WEIGHTS = {
+  harmony:          0.55,
+  vectorSimilarity: 0.25,
+  constraintMatch:  0.20,
+}
+
+const TRIM_SCORE_WEIGHTS = {
+  vectorSimilarity: 0.6,
+  constraintMatch:  0.4,
+}
+
+const DEFAULT_TRIM_LIMIT = 8
+
+// ─────────────────────────────────────────────
+// Pair scoring helpers (unchanged)
 // ─────────────────────────────────────────────
 
 function getColorScore(c1, c2) {
@@ -111,78 +122,205 @@ function getOccasionScore(occasions1 = [], occasions2 = [], target) {
 }
 
 // ─────────────────────────────────────────────
-// Score a pair of items — NOW RETURNS THE FULL BREAKDOWN,
-// not just the weighted total.
+// Score a pair of items (unchanged)
 // ─────────────────────────────────────────────
 
 export function scoreItemPair(itemA, itemB, targetOccasion) {
-  const color     = getColorScore(itemA.color?.primary, itemB.color?.primary)
-  const pattern   = getPatternScore(itemA.pattern, itemB.pattern)
-  const style     = getStyleScore(itemA.style, itemB.style)
+  const color    = getColorScore(itemA.color?.primary, itemB.color?.primary)
+  const pattern  = getPatternScore(itemA.pattern, itemB.pattern)
+  const style    = getStyleScore(itemA.style, itemB.style)
   const formality = getFormalityScore(itemA.formality, itemB.formality)
   const occasion  = getOccasionScore(itemA.occasions, itemB.occasions, targetOccasion)
 
-  const total =
+  return (
     color    * 0.30 +
     pattern  * 0.15 +
     style    * 0.25 +
     formality * 0.20 +
     occasion  * 0.10
-
-  return { total, color, pattern, style, formality, occasion }
+  )
 }
 
 // ─────────────────────────────────────────────
-// Score a full outfit — average of all pairs, PER CATEGORY.
-// `total` stays the same weighted average as before; the new
-// color/pattern/style/formality/occasion fields are each that
-// category's own average across every pair, rounded for display.
+// NEW — how well a single item matches the slot
+// constraint the user explicitly asked for.
+// Returns 0.0 to 1.0. Neutral (0.5) when no
+// constraint was given for this slot at all —
+// this is intentional: an unconstrained slot
+// should never be penalized or rewarded by this term.
 // ─────────────────────────────────────────────
 
-export function scoreOutfit(items, targetOccasion) {
-  if (items.length < 2) {
-    return { total: 50, pairsScored: 0, color: 50, pattern: 50, style: 50, formality: 50, occasion: 50 }
+export function computeConstraintMatchScore(item, slotConstraint) {
+  if (!slotConstraint || (!slotConstraint.color && !slotConstraint.subCategory && !slotConstraint.pattern)) {
+    return 0.5
   }
 
-  const pairBreakdowns = []
-  for (let i = 0; i < items.length; i++) {
-    for (let j = i + 1; j < items.length; j++) {
-      pairBreakdowns.push(scoreItemPair(items[i], items[j], targetOccasion))
+  const checks = []
+
+  if (slotConstraint.color) {
+    const itemColor = (item.color?.primary || '').toLowerCase().trim()
+    const itemFamily = (item.color?.colorFamily || '').toLowerCase().trim()
+    const wantColor = slotConstraint.color.toLowerCase().trim()
+    const wantFamily = (slotConstraint.colorFamily || '').toLowerCase().trim()
+
+    if (itemColor === wantColor) {
+      checks.push(1.0)
+    } else if (
+      (itemFamily && itemFamily === wantColor) ||
+      (itemColor && (itemColor.includes(wantColor) || wantColor.includes(itemColor)))
+    ) {
+      checks.push(0.95) // direct match via family or shade (e.g. 'light pink' for 'pink', or 'pink' for 'light pink')
+    } else if (
+      (wantFamily && itemFamily === wantFamily) ||
+      (wantFamily && itemColor.includes(wantFamily))
+    ) {
+      checks.push(0.7) // same family relaxed search
+    } else {
+      checks.push(0.15) // present in the pool despite not matching — likely a forced-floor/fallback item
     }
   }
 
-  const avg = (key) =>
-    Math.round(pairBreakdowns.reduce((s, p) => s + p[key], 0) / pairBreakdowns.length)
+  if (slotConstraint.subCategory) {
+    const itemSub = (item.subCategory || '').toLowerCase().trim()
+    const wantSub = slotConstraint.subCategory.toLowerCase().trim()
+    const isExact = itemSub === wantSub
+    const isSubtype = itemSub.includes(wantSub) || wantSub.includes(itemSub)
+    checks.push(isExact ? 1.0 : isSubtype ? 0.95 : 0.2)
+  }
+
+  if (slotConstraint.pattern) {
+    const itemPattern = (item.pattern || '').toLowerCase().trim()
+    const wantPattern = slotConstraint.pattern.toLowerCase().trim()
+    checks.push(itemPattern === wantPattern ? 1.0 : 0.4)
+  }
+
+  return checks.reduce((sum, v) => sum + v, 0) / checks.length
+}
+
+// ─────────────────────────────────────────────
+// NEW — normalizes an item's retrieval-time
+// vectorScore into the 0-1 range this module
+// works in. Items with no vectorScore (fixed-
+// filter fallback path, or forced-floor items
+// that used metadata-only fallback) default to
+// a neutral 0.5 rather than being penalized for
+// simply lacking the field.
+// ─────────────────────────────────────────────
+
+export function computeVectorScoreComponent(item) {
+  return typeof item.vectorScore === 'number' ? item.vectorScore : 0.5
+}
+
+// ─────────────────────────────────────────────
+// NEW — trims a slot's candidate pool down to the
+// best `limit` items using vectorScore + constraint
+// match only (harmony is pairwise and doesn't apply
+// to a single item, so it's intentionally excluded here).
+// This runs BEFORE the cartesian product so generateCandidates
+// works from a small, high-quality pool per slot.
+// ─────────────────────────────────────────────
+
+export function trimPoolBySlot(items, slotConstraint, limit = DEFAULT_TRIM_LIMIT) {
+  if (!Array.isArray(items) || items.length <= limit) return items
+
+  return items
+    .map(item => {
+      const vectorComponent     = computeVectorScoreComponent(item)
+      const constraintComponent = computeConstraintMatchScore(item, slotConstraint)
+      const trimScore =
+        vectorComponent * TRIM_SCORE_WEIGHTS.vectorSimilarity +
+        constraintComponent * TRIM_SCORE_WEIGHTS.constraintMatch
+      return { item, trimScore }
+    })
+    .sort((a, b) => b.trimScore - a.trimScore)
+    .slice(0, limit)
+    .map(({ item }) => item)
+}
+
+function trimCandidatePool(candidatePool, slotConstraints = {}) {
+  const trimmed = {}
+  for (const [category, items] of Object.entries(candidatePool)) {
+    if (!Array.isArray(items)) {
+      trimmed[category] = items
+      continue
+    }
+    trimmed[category] = trimPoolBySlot(items, slotConstraints[category], DEFAULT_TRIM_LIMIT)
+  }
+  return trimmed
+}
+
+// ─────────────────────────────────────────────
+// Score a full outfit — pairwise harmony average,
+// now blended with the outfit's average vector
+// similarity and average constraint match.
+//
+// slotConstraints is keyed by category (top/bottom/
+// footwear/outerwear) — each item's own `.category`
+// field is used to look up its relevant constraint.
+// ─────────────────────────────────────────────
+
+export function scoreOutfit(items, targetOccasion, slotConstraints = {}) {
+  if (items.length < 2) {
+    return {
+      total: 50, pairsScored: 0,
+      harmony: 50, vectorSimilarity: 0.5, constraintMatch: 0.5,
+    }
+  }
+
+  const pairScores = []
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      pairScores.push(scoreItemPair(items[i], items[j], targetOccasion))
+    }
+  }
+  const harmonyAvg = pairScores.reduce((s, p) => s + p, 0) / pairScores.length
+
+  const vectorComponents     = items.map(computeVectorScoreComponent)
+  const constraintComponents = items.map(item =>
+    computeConstraintMatchScore(item, slotConstraints[item.category])
+  )
+  const vectorAvg     = vectorComponents.reduce((s, v) => s + v, 0) / vectorComponents.length
+  const constraintAvg = constraintComponents.reduce((s, v) => s + v, 0) / constraintComponents.length
+
+  const finalTotal =
+    harmonyAvg * FINAL_SCORE_WEIGHTS.harmony +
+    (vectorAvg * 100) * FINAL_SCORE_WEIGHTS.vectorSimilarity +
+    (constraintAvg * 100) * FINAL_SCORE_WEIGHTS.constraintMatch
 
   return {
-    total:       avg('total'),
-    pairsScored: pairBreakdowns.length,
-    color:       avg('color'),
-    pattern:     avg('pattern'),
-    style:       avg('style'),
-    formality:   avg('formality'),
-    occasion:    avg('occasion'),
+    total:            Math.round(finalTotal),
+    harmony:          Math.round(harmonyAvg),
+    vectorSimilarity: parseFloat(vectorAvg.toFixed(3)),
+    constraintMatch:  parseFloat(constraintAvg.toFixed(3)),
+    pairsScored:      pairScores.length,
   }
 }
 
 // ─────────────────────────────────────────────
-// Generate outfit candidates via cartesian product — unchanged
+// Generate outfit candidates via cartesian product.
+// CHANGED: now accepts `intent` instead of just
+// `targetOccasion`, so slotConstraints can be read
+// and used both for pool trimming and for scoring.
 // ─────────────────────────────────────────────
 
-export function generateCandidates(candidatePool, targetOccasion, maxCandidates = 500) {
-  const { top = [], bottom = [], footwear = [], outerwear = [] } = candidatePool
+export function generateCandidates(candidatePool, intent = {}, maxCandidates = 500) {
+  const targetOccasion  = intent?.occasions || null
+  const slotConstraints = intent?.slotConstraints || {}
+
+  const trimmedPool = trimCandidatePool(candidatePool, slotConstraints)
+
+  const { top = [], bottom = [], footwear = [], outerwear = [] } = trimmedPool
 
   const templates = []
 
   if (top.length && bottom.length && footwear.length) {
     templates.push([top, bottom, footwear])
   }
-
   if (top.length && bottom.length && footwear.length && outerwear.length) {
     templates.push([top, bottom, footwear, outerwear])
   }
 
-  const fullBody = candidatePool.full_body || []
+  const fullBody = trimmedPool.full_body || []
   if (fullBody.length && footwear.length) {
     templates.push([fullBody, footwear])
   }
@@ -193,30 +331,37 @@ export function generateCandidates(candidatePool, targetOccasion, maxCandidates 
     const shuffled = template.map(slot =>
       [...slot].sort(() => Math.random() - 0.5)
     )
-    collectCombinations(shuffled, 0, [], results, maxCandidates, targetOccasion)
+    collectCombinations(shuffled, 0, [], results, maxCandidates, targetOccasion, slotConstraints)
     if (results.length >= maxCandidates) break
   }
 
   return results.sort((a, b) => b.score.total - a.score.total)
 }
 
-function collectCombinations(slots, depth, current, results, cap, targetOccasion) {
+function collectCombinations(slots, depth, current, results, cap, targetOccasion, slotConstraints) {
   if (results.length >= cap) return
   if (depth === slots.length) {
-    const score = scoreOutfit(current, targetOccasion)
+    const score = scoreOutfit(current, targetOccasion, slotConstraints)
     results.push({ items: [...current], score })
     return
   }
   for (const item of slots[depth]) {
-    collectCombinations(slots, depth + 1, [...current, item], results, cap, targetOccasion)
+    collectCombinations(slots, depth + 1, [...current, item], results, cap, targetOccasion, slotConstraints)
     if (results.length >= cap) return
   }
 }
 
 // ─────────────────────────────────────────────
-// Diversity enforcement — unchanged
+// Diversity enforcement (unchanged for now).
+// NOTE: this is the >50%-overlap rule that caused
+// the original skirt→trousers bug. It is intentionally
+// left as-is here — Step 5 (composition) replaces this
+// entirely with slot-aware, constraint-respecting
+// diversity logic. Do not treat this as fixed yet.
 // ─────────────────────────────────────────────
 
+
+// NOTE - This function selectDiverseOutfits is not used now - it was in old approach
 export function selectDiverseOutfits(sortedCandidates, count = 5) {
   const selected  = []
   const usedIds   = new Set()
