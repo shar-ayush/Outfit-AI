@@ -5,6 +5,7 @@ import {
   getSaved,
   getOutfit,
   removeOutfit,
+  permanentDeleteOutfit,
   getOutfitRecommendation,
   createOutfit,
   getDailyOutfit,
@@ -31,7 +32,8 @@ router.get('/saved', getSaved)
 
 // Single outfit
 router.get('/:outfitId',         getOutfit)
-router.delete('/:outfitId',      removeOutfit)
+router.delete('/:outfitId',           removeOutfit)
+router.delete('/:outfitId/permanent', permanentDeleteOutfit)
 
 // Record action on outfit
 router.post('/:outfitId/action', outfitAction)

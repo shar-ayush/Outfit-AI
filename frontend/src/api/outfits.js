@@ -69,7 +69,9 @@ export async function getRecommendationForOutfit(outfitId) {
   return data.data.recommendation;
 }
 
-export async function deleteOutfit(outfitId) {
-  const { data } = await apiClient.delete(`/outfits/${outfitId}`);
+export async function deleteOutfit(outfitId, { permanent = false } = {}) {
+  const { data } = await apiClient.delete(
+    permanent ? `/outfits/${outfitId}/permanent` : `/outfits/${outfitId}`
+  );
   return data.data;
 }

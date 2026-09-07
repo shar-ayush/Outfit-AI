@@ -246,16 +246,6 @@ export default function HomeScreen() {
         </Pressable>
       )}
 
-      {/* Today's Planned Outfit Card */}
-      <TodayPlannedOutfitCard
-        plan={todayPlan}
-        isLoading={todayPlanLoading}
-        onOpenPlan={() => router.push(`/(app)/planner/${todayDateStr}`)}
-        onViewOutfitDetail={(outfitId) =>
-          router.push({ pathname: '/(modals)/outfit-detail', params: { outfitId } })
-        }
-      />
-
       <View style={styles.section}>
         <DailyOutfitCard
           outfit={currentOutfit}
@@ -271,7 +261,15 @@ export default function HomeScreen() {
           onAskStylist={handleAskStylist}
         />
       </View>
-
+      {/* Today's Planned Outfit Card */}
+      <TodayPlannedOutfitCard
+        plan={todayPlan}
+        isLoading={todayPlanLoading}
+        onOpenPlan={() => router.push(`/(app)/planner/${todayDateStr}`)}
+        onViewOutfitDetail={(outfitId) =>
+          router.push({ pathname: '/(modals)/outfit-detail', params: { outfitId } })
+        }
+      />
       <View style={styles.section}>
         <QuickActions onNavigate={(route) => router.push(route)} />
       </View>

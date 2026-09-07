@@ -29,7 +29,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import ErrorState from '@/components/common/ErrorState';
 import Modal from '@/components/common/Modal';
 import ClothStats from '@/components/cloth/ClothStats';
-import { useClothItem, useToggleAvailability, useArchiveCloth } from '@/hooks/useWardrobe';
+import { useClothItem, useToggleAvailability, useArchiveCloth, useDeleteClothPermanent } from '@/hooks/useWardrobe';
 import { useItemWearHistory } from '@/hooks/useWearLogs';
 import { useUIStore } from '@/stores';
 import { formatRelativeDate } from '@/utils/dateUtils';
@@ -50,6 +50,8 @@ export default function ItemDetailScreen() {
   const { data: cloth, isLoading, isError, refetch } = useClothItem(clothId);
   const toggleAvailability = useToggleAvailability();
   const archiveCloth = useArchiveCloth();
+  const deleteClothPermanent = useDeleteClothPermanent();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   // FIX (backend #6): now uses the real clothId filter on GET /wear-logs
   // instead of fetching 50 general logs and filtering client-side (which
   // silently missed older wears once a user had 50+ logs total).
@@ -74,6 +76,16 @@ export default function ItemDetailScreen() {
         router.back();
       },
       onError: () => showToast('Could not archive this item', 'error'),
+    });
+  };
+
+  const handleDeletePermanent = () => {
+    deleteClothPermanent.mutate(clothId, {
+      onSuccess: () => {
+        showToast('Item permanently deleted', 'success');
+        router.back();
+      },
+      onError: () => showToast('Could not delete this item', 'error'),
     });
   };
 
@@ -121,7 +133,7 @@ export default function ItemDetailScreen() {
           </View>
 
           <View style={styles.actionsRow}>
-            <Button
+            {/* <Button
               variant={cloth.isAvailable ? 'secondary' : 'primary'}
               icon="washing-machine"
               onPress={handleToggleAvailability}
@@ -136,6 +148,13 @@ export default function ItemDetailScreen() {
               icon="archive-outline"
               size="icon"
               onPress={() => setArchiveConfirmOpen(true)}
+              fullWidth={false}
+            /> */}
+            <Button
+              variant="secondary"
+              icon="trash-can-outline"
+              size="icon"
+              onPress={() => setDeleteConfirmOpen(true)}
               fullWidth={false}
             />
           </View>
@@ -207,15 +226,46 @@ export default function ItemDetailScreen() {
           It'll be removed from your wardrobe and outfit suggestions, but you can restore it later.
         </Text>
         <View style={styles.modalActions}>
-          <Button variant="secondary" onPress={() => setArchiveConfirmOpen(false)} style={styles.modalButton}>
+          <Button
+            variant="secondary"
+            onPress={() => setArchiveConfirmOpen(false)}
+            style={styles.modalButton}
+            fullWidth={false}
+          >
             Cancel
           </Button>
           <Button
             onPress={handleArchive}
             loading={archiveCloth.isPending}
             style={styles.modalButton}
+            fullWidth={false}
           >
             Archive
+          </Button>
+        </View>
+      </Modal>
+
+      <Modal visible={deleteConfirmOpen} onRequestClose={() => setDeleteConfirmOpen(false)}>
+        <Text variant="titleMd">Delete permanently?</Text>
+        <Text variant="bodyMd" color="secondary" style={styles.modalDescription}>
+          This will permanently delete this item and its photos from your wardrobe. This action cannot be undone.
+        </Text>
+        <View style={styles.modalActions}>
+          <Button
+            variant="secondary"
+            onPress={() => setDeleteConfirmOpen(false)}
+            style={styles.modalButton}
+            fullWidth={false}
+          >
+            Cancel
+          </Button>
+          <Button
+            onPress={handleDeletePermanent}
+            loading={deleteClothPermanent.isPending}
+            style={[styles.modalButton, { backgroundColor: colors.error }]}
+            fullWidth={false}
+          >
+            Delete
           </Button>
         </View>
       </Modal>

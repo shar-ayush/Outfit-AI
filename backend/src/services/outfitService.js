@@ -268,6 +268,8 @@ export async function recordOutfitAction({
   // Save outfit if action is save
   if (eventType === 'saved') {
     await Outfit.findByIdAndUpdate(outfitId, { isSaved: true })
+  } else if (eventType === 'unsaved' || eventType === 'unsave') {
+    await Outfit.findByIdAndUpdate(outfitId, { isSaved: false })
   }
 
   // processSignal now handles RecommendationEvent creation + Recommendation
@@ -348,7 +350,14 @@ export async function getRecommendationByOutfitId(outfitId, userId) {
 // Delete saved outfit
 // ─────────────────────────────────────────────
 
-export async function deleteOutfit(outfitId, userId) {
+export async function deleteOutfit(outfitId, userId, permanent = false) {
+  if (permanent) {
+    const outfit = await Outfit.findOneAndDelete({ _id: outfitId, userId })
+    if (!outfit) throw new ApiError(404, 'Outfit not found')
+    await DailyRecommendation.updateMany({ userId, outfitId }, { $unset: { outfitId: 1 } })
+    return { deleted: true, permanent: true, outfitId }
+  }
+
   const outfit = await Outfit.findOneAndUpdate(
     { _id: outfitId, userId },
     { isArchived: true, isSaved: false },
@@ -356,7 +365,7 @@ export async function deleteOutfit(outfitId, userId) {
   )
 
   if (!outfit) throw new ApiError(404, 'Outfit not found')
-  return { deleted: true, outfitId }
+  return { deleted: true, permanent: false, outfitId }
 }
 
 // ─────────────────────────────────────────────

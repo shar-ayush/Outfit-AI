@@ -98,6 +98,22 @@ export function useArchiveCloth() {
   });
 }
 
+export function useDeleteClothPermanent() {
+  const queryClient = useQueryClient();
+  const removeItem = useWardrobeStore((s) => s.removeItem);
+
+  return useMutation({
+    mutationFn: (clothId) => wardrobeApi.permanentDeleteCloth(clothId),
+    onSuccess: (_data, clothId) => {
+      removeItem(clothId);
+      queryClient.invalidateQueries({ queryKey: ['wardrobe'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.WARDROBE_STATS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SLEEPING_ITEMS });
+      queryClient.invalidateQueries({ queryKey: ['outfits'] });
+    },
+  });
+}
+
 export function useWardrobeStats() {
   return useQuery({
     queryKey: QUERY_KEYS.WARDROBE_STATS,

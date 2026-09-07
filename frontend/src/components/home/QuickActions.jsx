@@ -13,7 +13,7 @@ const ACTIONS = [
   { key: 'add', icon: 'plus', label: 'Add Item', route: '/(app)/wardrobe/upload' },
   { key: 'chat', icon: 'forum-outline', label: 'Style Chat', route: '/(app)/stylist' },
   { key: 'plan', icon: 'calendar-month-outline', label: 'Plan Week', route: '/(app)/planner' },
-  { key: 'analytics', icon: 'chart-line', label: 'Analytics', route: '/(app)/profile/analytics' },
+  { key: 'saved', icon: 'bookmark-outline', label: 'Saved', route: '/(app)/home/saved-outfits' },
 ];
 
 export default function QuickActions({ onNavigate }) {
@@ -24,7 +24,7 @@ export default function QuickActions({ onNavigate }) {
           <View style={styles.iconCircle}>
             <MaterialCommunityIcons name={action.icon} size={22} color={colors.primary} />
           </View>
-          <Text variant="labelCaps" style={styles.label}>
+          <Text variant="labelCaps" style={styles.label} numberOfLines={2}>
             {action.label}
           </Text>
         </Pressable>
