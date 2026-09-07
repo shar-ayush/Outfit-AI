@@ -12,6 +12,7 @@ import * as wearLogsApi from './wearLogs';
 import * as stylistApi from './stylist';
 import * as analyticsApi from './analytics';
 import * as userApi from './user';
+import * as tryOnApi from './tryOn';
 
 export {
   authApi,
@@ -22,6 +23,8 @@ export {
   stylistApi,
   analyticsApi,
   userApi,
+  tryOnApi,
 };
+
 
 export { default as apiClient } from './client';

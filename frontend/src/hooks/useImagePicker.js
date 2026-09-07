@@ -39,7 +39,7 @@ export function useImagePicker() {
       return null;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 1,
     });
     if (result.canceled) return null;
@@ -53,7 +53,7 @@ export function useImagePicker() {
       return [];
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 1,
       allowsMultipleSelection: true,
       selectionLimit: maxCount,
@@ -61,6 +61,7 @@ export function useImagePicker() {
     if (result.canceled) return [];
     return result.assets;
   }, []);
+
 
   return { pickFromCamera, pickFromGallery, pickMultipleFromGallery };
 }

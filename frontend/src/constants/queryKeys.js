@@ -40,6 +40,10 @@ export const QUERY_KEYS = {
   // User
   PROFILE: ['user', 'profile'],
   PREFERENCES: ['user', 'preferences'],
+
+  // Virtual Try-On
+  TRY_ON_HISTORY: (page) => ['try-on', 'history', page],
 };
+
 
 export default QUERY_KEYS;

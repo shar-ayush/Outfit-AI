@@ -8,8 +8,9 @@
 // sheet. Uses expo-file-system + expo-sharing, both already installed
 // since Step 1.
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+
 import { wardrobeApi } from '@/api';
 
 export async function exportWardrobeToJSON() {

@@ -24,3 +24,9 @@ export const uploadSingle = upload.single('image')
 
 // Multiple images — up to 20 for bulk upload
 export const uploadMultiple = upload.array('images', 20)
+
+// Virtual Try-On images — person and apparel
+export const uploadTryOn = upload.fields([
+  { name: 'personImage', maxCount: 1 },
+  { name: 'apparelImage', maxCount: 1 },
+])

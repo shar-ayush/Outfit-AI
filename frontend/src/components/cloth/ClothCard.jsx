@@ -22,7 +22,7 @@ import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Text from '@/components/common/Text';
 import { colors, spacing, radius, shadows } from '@/theme';
-import { COLOR_HEX_MAP } from '@/constants/categories';
+import { COLOR_HEX_MAP, getClothColorHex } from '@/constants/categories';
 
 const CATEGORY_LABELS = {
   top: 'Tops',
@@ -34,7 +34,8 @@ const CATEGORY_LABELS = {
 };
 
 export default function ClothCard({ cloth, onPress }) {
-  const colorHex = cloth.color?.hex || COLOR_HEX_MAP[cloth.color?.primary] || colors.surfaceContainerHigh;
+  const colorHex = getClothColorHex(cloth.color, colors.surfaceContainerHigh);
+
 
   return (
     <Pressable onPress={onPress} style={[styles.card, shadows.xs]}>

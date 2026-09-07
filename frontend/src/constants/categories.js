@@ -141,9 +141,34 @@ export const SEASONS = ['summer', 'winter', 'spring', 'autumn'];
 // ─────────────────────────────────────────────
 
 export const COLOR_HEX_MAP = {
-  black: '#1A1A1A', white: '#FFFFFF', navy: '#000080', beige: '#F5F5DC',
-  olive: '#808000', red: '#B22222', pink: '#FFC0CB', grey: '#808080',
+  black: '#1A1A1A', white: '#FFFFFF', navy: '#000080', blue: '#2B6CB0', beige: '#F5F5DC',
+  olive: '#808000', red: '#B22222', pink: '#FFC0CB', grey: '#808080', gray: '#808080',
   brown: '#8B4513', camel: '#C19A6B', burgundy: '#800020', 'light blue': '#ADD8E6',
   'dark blue': '#00008B', cream: '#FFFDD0', orange: '#FFA500', yellow: '#FFD700',
-  purple: '#800080', green: '#556B2F',
+  purple: '#800080', green: '#556B2F', charcoal: '#36454F', khaki: '#C3B091',
+  maroon: '#800000', teal: '#008080', tan: '#D2B48C', coral: '#FF7F50',
+  gold: '#D4AF37', silver: '#C0C0C0', denim: '#1560BD', rust: '#B7410E',
+  lavender: '#E6E6FA', cyan: '#00FFFF', magenta: '#FF00FF',
 };
+
+/**
+ * Resolve the most accurate hex code for a garment.
+ * Prioritizes exact hex from backend AI, falls back to COLOR_HEX_MAP by color name or family.
+ */
+export function getClothColorHex(color, defaultFallback = '#E8E8E8') {
+  if (!color) return defaultFallback;
+  if (color.hex && typeof color.hex === 'string' && /^#[0-9A-Fa-f]{3,8}$/.test(color.hex.trim())) {
+    return color.hex.trim();
+  }
+  const primaryName = (color.primary || '').toLowerCase().trim();
+  if (COLOR_HEX_MAP[primaryName]) {
+    return COLOR_HEX_MAP[primaryName];
+  }
+  const familyName = (color.colorFamily || '').toLowerCase().trim();
+  if (COLOR_HEX_MAP[familyName]) {
+    return COLOR_HEX_MAP[familyName];
+  }
+  return defaultFallback;
+}
+
+

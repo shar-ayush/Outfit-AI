@@ -1,0 +1,272 @@
+API Overview
+Visualize how clothing looks on a person without physical fitting using our AI-powered Virtual Try-On API. Our cloud-based solution uses advanced deep learning algorithms to seamlessly blend garments onto model photos, preserving natural poses and body proportions. Perfect for e-commerce platforms, fashion retailers, or any application looking to enhance the online shopping experience.
+
+This API is developed by API4AI. Our APIs are built on a robust cloud technology stack, ensuring full operability, scalability, and reliable uptime. Our mission is to deliver out-of-the-box, self-contained AI solutions that can be seamlessly integrated into any application with just a few simple steps.
+
+👉 Features
+✅ Virtually fits clothing items onto person photos with realistic results.
+✅ Uses AI to preserve body proportions, poses, and natural appearance.
+✅ Supports various garment types including tops, dresses, and outerwear.
+✅ Accepts an extra prompt to adjust the image generation process.
+
+🛠 Endpoints
+GET https://virtual-try-on7.p.rapidapi.com/v1/version – Get service version.
+POST https://virtual-try-on7.p.rapidapi.com/v1/results – Perform virtual try-on and obtain generation results.
+👉 Get version
+Returns the current version of the service in format vX.Y.Z, where X is the version of the API.
+
+Method: GET
+Endpoint: https://virtual-try-on7.p.rapidapi.com/v1/version
+Example
+
+curl -X 'GET' 'https://virtual-try-on7.p.rapidapi.com/v1/version' \
+     -H 'X-RapidAPI-Key: ...' \
+Response:
+
+v1.0.0
+👉 Perform virtual try‑on and return results
+Performs virtual try‑on with the given person and apparel images.
+
+Method: POST
+Endpoint: https://virtual-try-on7.p.rapidapi.com/v1/results
+POST parameters: image, url, image-apparel, url-apparel, prompt
+Request parameters
+The service expects a multipart/form-data request with the following fields.
+
+Required fields to pass images
+image or url — Binary file with a person/model photo or URL string pointing to a public image resource.
+image-apparel or url — Binary file with an apparel photo or URL string pointing to a public image resource.
+Supported input types
+All image inputs must be regular JPEG or PNG images:
+
+Typical extensions: .jpg, .jpeg, .png.
+Acceptable MIME types:
+image/jpeg
+image/png
+The size of each image file must be less than 16Mb.
+
+Optional prompt
+You can provide an extra prompt to fine-tune the image generation, such as changing the background or time of day. Feel free to experiment.
+
+Note: In some cases the prompt may be ignored. A common reason is when one of the supplied images is flagged as NSFW (for example, a very revealing bikini). In that case the response status will contain a warning:
+
+results[].status.code: warning.
+results[].status.message: Prompt was ignored during image generation.
+Response schema
+For responses with 200 HTTP code the type of response is a JSON object with the following schema:
+
+{
+  "results": [
+    {
+      "status": {
+        "code": "...",
+        "message": "..."
+      },
+      "name": "...",
+      "md5": "...",
+      "width": ...,
+      "height": ...,
+      "entities": [
+        {
+          "kind": "image",
+          "name": "person-in-apparel",
+          "image": "...",
+          "representation": "base64",
+          "format": "..."
+        }
+      ]
+    }
+  ]
+}
+Primary fields
+results[] (array) – List of per‑request result entries (usually contains a single entry).
+results[].status.code (string) – Status code of processing: ok, failure or warning.
+results[].status.message (string) – Human‑readable explanation for the processing status.
+results[].name (string) – Original primary person image name (e.g. model.jpg).
+results[].md5 (string) – MD5 checksum of the original person image.
+results[].width (int) – Width of the primary input person image (for valid inputs).
+results[].height (int) – Height of the primary input person image (for valid inputs).
+results[].entities[] (array) – Logical result groups for the request.
+results[].entities[].kind (string) – Result kind; for this API always "image".
+results[].entities[].name (string) – Entity name; for this API "person-in-apparel".
+results[].entities[].image (string) – Generated image encoded as a base64 string.
+results[].entities[].representation (string) – Image representation, currently "base64".
+results[].entities[].format (string) – Output image format, e.g. "PNG".
+Passing images
+Images can be passed by posting regular multipart/form-data in the following ways.
+
+Binary file upload
+as binary file in image field for the model/person image
+as binary file in image-apparel field for the apparel image
+These field names (image and image-apparel) are what the API expects in form‑data, even though conceptually they represent person and apparel images.
+
+URL
+as URL string to some public resource in url field
+as URL string to some public resource in url-apparel field
+The service checks input files by MIME type and accepts:
+
+image/jpeg
+image/png
+The size of each file must be less than 16Mb.
+
+Typical constraints for the person image
+Full or upper‑body view works best.
+Avoid extreme poses or heavy occlusions.
+Good lighting and contrast between body and background improve results.
+Typical constraints for the apparel image
+Clear front view of the apparel (e.g. shirt, dress, jacket).
+Minimal wrinkles and obstructions.
+Plain background is preferable.
+Examples
+Example: person & apparel images as files
+curl -X 'POST' 'https://virtual-try-on7.p.rapidapi.com/v1/results' \
+     -H 'X-RapidAPI-Key: ...' \
+     -F 'image=@person.png' \
+     -F 'image-apparel=@apparel.png'
+Response (simplified):
+
+{
+  "results": [
+    {
+      "status": {
+        "code": "ok",
+        "message": "Success"
+      },
+      "name": "person.png",
+      "md5": "a447c0aa2b2b89aa6ffb488317c0ab1e",
+      "width": 1024,
+      "height": 1536,
+      "entities": [
+        {
+          "kind": "image",
+          "name": "person-in-apparel",
+          "image": "iVBORw0KGgoAAAA...YII=",
+          "representation": "base64",
+          "format": "PNG"
+        }
+      ]
+    }
+  ]
+}
+
+Example: person & apparel images as URLs
+curl -X 'POST' 'https://virtual-try-on7.p.rapidapi.com/v1/results' \
+     -H 'X-RapidAPI-Key: ...' \
+     -F 'url=https://static.api4.ai/samples/virtual-try-on-person-1.jpg' \
+     -F 'url-apparel=https://static.api4.ai/samples/virtual-try-on-apparel-1.jpg'
+
+Example: additional prompt
+curl -X 'POST' 'https://virtual-try-on7.p.rapidapi.com/v1/results' \
+     -H 'X-RapidAPI-Key: ...' \
+     -F 'url=https://static.api4.ai/samples/virtual-try-on-person-1.jpg' \
+     -F 'url-apparel=https://static.api4.ai/samples/virtual-try-on-apparel-1.jpg' \
+     -F 'prompt=Change the daytime to evening and add warm atmospheric street lights.'
+
+❗ Possible errors
+👉 The service cannot process provided images
+When the client sends an image or set of images that cannot be processed for some reason(s), the service responds with 200 code and returns a JSON object in the same format as for successful analysis. In this case:
+
+results[].status.code will have value failure
+results[].status.message will contain a relevant explanation.
+Typical reasons:
+
+Unsupported file MIME type
+Corrupted image file
+Invalid URLs or unreachable remote resources
+Person or apparel not detected in the image
+Example response for an image with unsupported MIME type:
+
+{
+  "results": [
+    {
+      "status": {
+        "code": "failure",
+        "message": "Can not load image."
+      },
+      "name": "file.txt",
+      "md5": "d41d8cd98f00b204e9800998ecf8427e",
+      "entities": []
+    }
+  ]
+}
+👉 Request size is too big
+Request size is limited by approximately 32Mb.
+When the client sends a request that exceeds this limit, the service responds with 413 code.
+
+The typical reason for exceeding this limit is an overly large image or multiple images. Taking into account additional HTTP overhead, we strongly recommend not passing image files larger than 16Mb each.
+
+Example response for an overly large image:
+
+Error: Request Entity Too Large
+
+Your client issued a request that was too large.
+👉 Missing required images
+When the client sends a request without required images (image and image-apparel), the service responds with 422 code and returns a JSON object explaining the problem.
+
+Example response for request with missing person image:
+
+{
+  "detail": "Missing image or url field."
+}
+❓ F.A.Q.
+👉 What does this API do?
+The Virtual Try‑On API takes two images:
+
+a person (model) image
+an apparel image
+and produces a realistic image of the person wearing that apparel.
+
+👉 How should I choose the person and apparel images?
+Person image
+
+Use a full or upper‑body view.
+Avoid extreme poses and heavy occlusions.
+Ensure good lighting and clear contrast with the background.
+Apparel image
+
+Use a clear front view of the apparel (shirt, dress, jacket, etc.).
+Prefer a single apparel item per image.
+Plain backgrounds give better results.
+👉 Which form‑data fields should I use?
+For binary uploads:
+image — person image file.
+image-apparel — apparel image file.
+For URLs:
+url — URL of the person image.
+url-apparel — URL of the apparel image.
+👉 What image formats are supported?
+The API accepts:
+
+image/jpeg
+image/png
+Maximum file size is 16Mb per image.
+
+👉 Can I add an extra prompt?
+Yes, add a prompt field to your multipart/form-data request. Use it to suggest background changes, lighting, or other style tweaks. The service may ignore the prompt (e.g. if an input is flagged as NSFW): in that case results[].status.code will be warning and results[].status.message will explain that the prompt was ignored.
+
+example - 
+import axios from 'axios';
+
+const encodedParams = new URLSearchParams();
+encodedParams.set('image', 'undefined');
+encodedParams.set('url', 'https://static.api4.ai/samples/virtual-try-on-person-1.jpg');
+encodedParams.set('image-apparel', '');
+encodedParams.set('url-apparel', 'https://static.api4.ai/samples/virtual-try-on-apparel-1.jpg');
+
+const options = {
+  method: 'POST',
+  url: 'https://virtual-try-on7.p.rapidapi.com/results',
+  headers: {
+    'x-rapidapi-key': '048e4734a4mshab3aef0959242d6p124670jsnd97c9d4cb1d9',
+    'x-rapidapi-host': 'virtual-try-on7.p.rapidapi.com',
+    'Content-Type': 'application/x-www-form-urlencoded'
+  },
+  data: encodedParams,
+};
+
+try {
+	const response = await axios.request(options);
+	console.log(response.data);
+} catch (error) {
+	console.error(error);
+}

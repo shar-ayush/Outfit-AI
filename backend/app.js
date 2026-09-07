@@ -12,7 +12,9 @@ import wearLogRoutes    from './src/routes/wearLogs.js'
 import stylistRoutes    from './src/routes/stylist.js'
 import analyticsRoutes  from './src/routes/analytics.js'
 import userRoutes       from './src/routes/user.js'
+import tryOnRoutes      from './src/routes/tryOn.js'
 import errorHandler     from './src/middleware/errorHandler.js'
+
 
 const app = express()
 
@@ -150,6 +152,8 @@ app.use('/api/wear-logs', wearLogRoutes)
 app.use('/api/stylist',   stylistRoutes)
 app.use('/api/analytics', analyticsRoutes)
 app.use('/api/user',      userRoutes)
+app.use('/api/try-on',    tryOnRoutes)
+
 
 // 404
 app.use((req, res) => {
