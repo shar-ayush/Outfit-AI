@@ -4,10 +4,10 @@ import getGenAI from '../../config/gemini.js'
 import { searchWardrobe, searchWardrobeDeclaration } from './wardrobeSearchTool.js'
 import { vectorSearchWardrobe, groupByCategory } from '../ai/embeddingService.js'
 
-const FETCH_LIMIT           = 15
-const MAX_TOTAL_TOOL_CALLS  = 10   // hard ceiling across the whole loop
+const FETCH_LIMIT = 15
+const MAX_TOTAL_TOOL_CALLS = 10   // hard ceiling across the whole loop
 const MAX_CALLS_PER_CATEGORY = 3   // matches searchWardrobeDeclaration's stated limit
-const REQUIRED_SLOTS        = ['top', 'bottom', 'footwear']
+const REQUIRED_SLOTS = ['top', 'bottom', 'footwear']
 
 // ─────────────────────────────────────────────
 // Strip items down to what the LLM needs to see to decide
@@ -22,12 +22,12 @@ function summarizeForLLM(items, limit = 8) {
     .sort((a, b) => (b.vectorScore ?? 0) - (a.vectorScore ?? 0))
     .slice(0, limit)
     .map(item => ({
-      id:          item._id.toString(),
-      color:       item.color?.primary,
+      id: item._id.toString(),
+      color: item.color?.primary,
       subCategory: item.subCategory,
-      pattern:     item.pattern,
-      style:       item.style,
-      formality:   item.formality,
+      pattern: item.pattern,
+      style: item.style,
+      formality: item.formality,
       vectorScore: item.vectorScore != null ? Number(item.vectorScore.toFixed(3)) : null,
     }))
 }
@@ -80,12 +80,12 @@ async function agenticRetrieval(userId, userQuery, intent) {
 
   const chat = model.startChat()
   const collected = {}       // category -> Map<itemId, fullItem>
-  const trail     = []       // debug/audit trail — every tool call made
+  const trail = []       // debug/audit trail — every tool call made
   const callCountByCategory = {}
   let totalCalls = 0
 
   let response = (await chat.sendMessage(buildRetrievalPrompt(userQuery, intent))).response
-  let calls    = response.functionCalls() || []
+  let calls = response.functionCalls() || []
 
   while (calls.length > 0 && totalCalls < MAX_TOTAL_TOOL_CALLS) {
     const functionResponseParts = []
@@ -111,13 +111,13 @@ async function agenticRetrieval(userId, userQuery, intent) {
       }
 
       trail.push({
-        callNumber:  totalCalls,
+        callNumber: totalCalls,
         category,
         args,
         resultCount: toolResult.count,
         usedFallback: !!toolResult.usedFallback,
-        capped:      !!toolResult.capped,
-        error:       toolResult.error || null,
+        capped: !!toolResult.capped,
+        error: toolResult.error || null,
       })
 
       if (toolResult.items?.length) {
@@ -133,7 +133,7 @@ async function agenticRetrieval(userId, userQuery, intent) {
           response: {
             count: toolResult.count,
             items: summarizeForLLM(toolResult.items || []),
-            note:  toolResult.capped ? 'Max retries reached for this category — stop retrying it.' : undefined,
+            note: toolResult.capped ? 'Max retries reached for this category — stop retrying it.' : undefined,
           },
         },
       })
@@ -141,8 +141,11 @@ async function agenticRetrieval(userId, userQuery, intent) {
 
     if (totalCalls >= MAX_TOTAL_TOOL_CALLS) break
 
-    response = (await chat.sendMessage(functionResponseParts)).response
-    calls    = response.functionCalls() || []
+    response = (await chat.sendMessage({
+      role: 'user',
+      parts: functionResponseParts,
+    })).response
+    calls = response.functionCalls() || []
   }
 
   // ── Defensive floor ──
@@ -152,16 +155,16 @@ async function agenticRetrieval(userId, userQuery, intent) {
   for (const slot of REQUIRED_SLOTS) {
     if (!collected[slot] || collected[slot].size === 0) {
       const fallbackArgs = {
-        category:  slot,
+        category: slot,
         queryText: [intent.slotConstraints?.[slot]?.color, slot, intent.occasions]
           .filter(Boolean).join(' ') || slot,
         ...(intent.slotConstraints?.[slot] || {}),
       }
       const result = await searchWardrobe(userId, fallbackArgs)
       trail.push({
-        callNumber:  ++totalCalls,
-        category:    slot,
-        args:        fallbackArgs,
+        callNumber: ++totalCalls,
+        category: slot,
+        args: fallbackArgs,
         resultCount: result.count,
         usedFallback: !!result.usedFallback,
         forcedFloor: true,
@@ -175,12 +178,12 @@ async function agenticRetrieval(userId, userQuery, intent) {
   const toArray = (cat) => collected[cat] ? Array.from(collected[cat].values()) : []
 
   const pool = {
-    top:        toArray('top'),
-    bottom:     toArray('bottom'),
-    footwear:   toArray('footwear'),
-    outerwear:  toArray('outerwear'),
-    full_body:  toArray('full_body'),
-    accessory:  toArray('accessory'),
+    top: toArray('top'),
+    bottom: toArray('bottom'),
+    footwear: toArray('footwear'),
+    outerwear: toArray('outerwear'),
+    full_body: toArray('full_body'),
+    accessory: toArray('accessory'),
   }
 
   const isEmpty = (
@@ -214,10 +217,10 @@ function buildFilter(userId, intent, relaxLevel = 0) {
     : userId
 
   const filter = {
-    userId:      uid,
-    aiTagged:    true,
+    userId: uid,
+    aiTagged: true,
     isAvailable: true,
-    isArchived:  false,
+    isArchived: false,
   }
 
   if (relaxLevel < 3 && intent.formality) {
@@ -231,7 +234,7 @@ function buildFilter(userId, intent, relaxLevel = 0) {
     filter.occasions = { $in: [intent.occasions] }
   }
   if (relaxLevel < 1) {
-    if (intent.season)             filter.season             = { $in: [intent.season] }
+    if (intent.season) filter.season = { $in: [intent.season] }
     if (intent.weatherSuitability) filter.weatherSuitability = { $in: [intent.weatherSuitability] }
   }
 
@@ -275,9 +278,9 @@ async function fallbackRetrieval(userId, userQuery, intent) {
 
   for (const cat of categories) {
     const filterItems = filterResults[cat] || []
-    const ragCatItems  = ragByCategory[cat] || []
-    const existingIds  = new Set(filterItems.map(i => i._id.toString()))
-    const uniqueRag    = ragCatItems.filter(i => !existingIds.has(i._id.toString()))
+    const ragCatItems = ragByCategory[cat] || []
+    const existingIds = new Set(filterItems.map(i => i._id.toString()))
+    const uniqueRag = ragCatItems.filter(i => !existingIds.has(i._id.toString()))
     merged[cat] = [...filterItems, ...uniqueRag]
   }
 
@@ -289,9 +292,9 @@ async function fallbackRetrieval(userId, userQuery, intent) {
   return {
     ...merged,
     isEmpty,
-    wasRelaxed:      filterResults.relaxLevel > 0,
-    relaxLevel:      filterResults.relaxLevel,
-    retrievalTrail:  [],
+    wasRelaxed: filterResults.relaxLevel > 0,
+    relaxLevel: filterResults.relaxLevel,
+    retrievalTrail: [],
     agenticLoopUsed: false,
   }
 }
