@@ -253,12 +253,14 @@ export const deleteAccount = asyncHandler(async (req, res) => {
     (await import('../models/Outfit.js')).default.deleteMany({ userId }),
     (await import('../models/OutfitPlan.js')).default.deleteMany({ userId }),
     (await import('../models/WearLog.js')).default.deleteMany({ userId }),
+    (await import('../models/DailyRecommendation.js')).default.deleteMany({ userId }),
     (await import('../models/Recommendation.js')).default.deleteMany({ userId }),
     (await import('../models/RecommendationEvent.js')).default.deleteMany({ userId }),
     (await import('../models/ItemPreference.js')).default.deleteMany({ userId }),
     (await import('../models/PairPreference.js')).default.deleteMany({ userId }),
     (await import('../models/ContextPreference.js')).default.deleteMany({ userId }),
     (await import('../models/ConversationSession.js')).default.deleteMany({ userId }),
+    (await import('../models/TryOnResult.js')).default.deleteMany({ userId }),
     User.findByIdAndDelete(userId),
   ])
 

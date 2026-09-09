@@ -26,11 +26,13 @@ import { getRefreshToken, setRefreshToken, clearRefreshToken } from '@/utils/sto
 // import back through stores/index.js) and cleared on every logout path.
 import { useStylistStore } from './stylistStore';
 import { useWardrobeStore } from './wardrobeStore';
+import { queryClient } from '@/api/queryClient';
 
 function clearOtherStores() {
   useStylistStore.getState().clearSession();
   useWardrobeStore.getState().clearFilters();
   useWardrobeStore.getState().setItems([]);
+  queryClient.clear();
 }
 
 export const useAuthStore = create((set, get) => ({
@@ -70,6 +72,7 @@ export const useAuthStore = create((set, get) => ({
   },
 
   register: async ({ email, password, username, gender }) => {
+    clearOtherStores();
     const { user, accessToken, refreshToken } = await authApi.register({
       email,
       password,
@@ -83,6 +86,7 @@ export const useAuthStore = create((set, get) => ({
   },
 
   login: async ({ email, password }) => {
+    clearOtherStores();
     const { user, accessToken, refreshToken } = await authApi.login({ email, password });
     setAccessToken(accessToken);
     await setRefreshToken(refreshToken);

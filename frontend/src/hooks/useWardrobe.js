@@ -40,6 +40,7 @@ export function useUploadCloth() {
       addItem(cloth); // optimistic local mirror — see wardrobeStore
       queryClient.invalidateQueries({ queryKey: ['wardrobe'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.WARDROBE_STATS });
+      queryClient.invalidateQueries({ queryKey: ['outfits'] });
     },
   });
 }
@@ -52,6 +53,7 @@ export function useUploadBulkClothes() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['wardrobe'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.WARDROBE_STATS });
+      queryClient.invalidateQueries({ queryKey: ['outfits'] });
     },
   });
 }
@@ -94,6 +96,7 @@ export function useArchiveCloth() {
       removeItem(clothId);
       queryClient.invalidateQueries({ queryKey: ['wardrobe'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.WARDROBE_STATS });
+      queryClient.invalidateQueries({ queryKey: ['outfits'] });
     },
   });
 }

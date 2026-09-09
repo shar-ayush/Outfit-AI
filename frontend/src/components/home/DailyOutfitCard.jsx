@@ -29,6 +29,7 @@ export default function DailyOutfitCard({
   onRefresh,
   onWeatherRefresh,
   onAskStylist,
+  onAddClothes,
 }) {
   const [savedLocally, setSavedLocally] = React.useState(false);
 
@@ -65,6 +66,8 @@ export default function DailyOutfitCard({
             icon="tshirt-crew-outline"
             title="No suggestion yet"
             description={message || 'Add a few wardrobe items to get your first outfit suggestion.'}
+            actionLabel={onAddClothes ? 'Add Clothes' : undefined}
+            onAction={onAddClothes}
           />
         </Card>
       ) : (

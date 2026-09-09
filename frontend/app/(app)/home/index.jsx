@@ -32,6 +32,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuthStore, useUIStore } from '@/stores';
 import { useWeather } from '@/hooks/useWeather';
 import { useDailyOutfit, useRefreshDailyOutfit, useOutfitAction } from '@/hooks/useOutfits';
+import { useWardrobeStats } from '@/hooks/useWardrobe';
 import { useSleepingItems } from '@/hooks/useAnalytics';
 import { useDayPlan } from '@/hooks/usePlans';
 import { getGreeting, toISODateString } from '@/utils/dateUtils';
@@ -45,12 +46,16 @@ export default function HomeScreen() {
   const showToast = useUIStore((s) => s.showToast);
 
   const { data: weather, isLoading: weatherLoading } = useWeather();
+  const { data: wardrobeStats, isLoading: wardrobeStatsLoading } = useWardrobeStats();
   const { data: sleeping, isLoading: sleepingLoading } = useSleepingItems();
   const outfitAction = useOutfitAction();
   const refreshDailyOutfit = useRefreshDailyOutfit();
 
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [actionLoading, setActionLoading] = useState(null); // 'worn' | 'saved' | null
+
+  // Check if user has any clothes in their wardrobe
+  const hasClothes = Boolean(wardrobeStats?.totalItems && wardrobeStats.totalItems > 0);
 
   // Today's calendar day in user's device local timezone
   const todayDateStr = toISODateString(new Date());
@@ -61,23 +66,26 @@ export default function HomeScreen() {
       : null;
   }, [weather]);
 
-  // Daily recommendation query — cached for today, zero re-trigger on screen switches
+  // Daily recommendation query — cached for today, zero re-trigger on screen switches.
+  // Disabled when the wardrobe is empty to eliminate redundant backend/AI calls.
   const {
     data: dailyData,
     isLoading: dailyLoading,
     refetch: refetchDaily,
   } = useDailyOutfit(todayDateStr, weatherContext, {
-    enabled: !weatherLoading,
+    enabled: !weatherLoading && !wardrobeStatsLoading && hasClothes,
   });
 
   const currentOutfit = dailyData?.outfit || null;
 
   // When returning to home screen (e.g. after customizing in stylist chat),
-  // immediately pull the latest daily recommendation
+  // pull the latest daily recommendation only if user has clothes
   useFocusEffect(
     useCallback(() => {
-      refetchDaily();
-    }, [refetchDaily])
+      if (hasClothes) {
+        refetchDaily();
+      }
+    }, [refetchDaily, hasClothes])
   );
 
   // Today's planned outfit
@@ -169,6 +177,10 @@ export default function HomeScreen() {
   };
 
   const handleRefresh = () => {
+    if (!hasClothes) {
+      showToast('Add a few wardrobe items to get outfit suggestions', 'info');
+      return;
+    }
     refreshDailyOutfit.mutate(
       {
         date: todayDateStr,
@@ -186,6 +198,7 @@ export default function HomeScreen() {
   };
 
   const handleWeatherRefresh = () => {
+    if (!hasClothes) return;
     refreshDailyOutfit.mutate(
       {
         date: todayDateStr,
@@ -249,8 +262,12 @@ export default function HomeScreen() {
       <View style={styles.section}>
         <DailyOutfitCard
           outfit={currentOutfit}
-          message={dailyData?.message}
-          isLoading={dailyLoading && !currentOutfit}
+          message={
+            !hasClothes
+              ? 'Add a few wardrobe items to get your first outfit suggestion.'
+              : dailyData?.message
+          }
+          isLoading={hasClothes && (dailyLoading || (wardrobeStatsLoading && !wardrobeStats)) && !currentOutfit}
           isRefreshing={refreshDailyOutfit.isPending}
           isActionLoading={actionLoading}
           weatherNudge={weatherNudge}
@@ -259,6 +276,7 @@ export default function HomeScreen() {
           onRefresh={handleRefresh}
           onWeatherRefresh={handleWeatherRefresh}
           onAskStylist={handleAskStylist}
+          onAddClothes={() => router.push('/(app)/wardrobe/upload')}
         />
       </View>
       {/* Today's Planned Outfit Card */}

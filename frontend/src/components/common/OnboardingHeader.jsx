@@ -32,7 +32,7 @@ export default function OnboardingHeader({ step, totalSteps = 4 }) {
         </Pressable>
 
         <Text variant="displayMd" style={styles.wordmark}>
-          outfiT AI
+          OUTFIT AI
         </Text>
 
         <View style={styles.spacer} />

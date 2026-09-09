@@ -10,7 +10,7 @@
 // mount, so a failed submit doesn't strand the user mid-animation.
 
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -38,7 +38,6 @@ export default function OnboardingCompleteScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const styleLabels = labelsFor(STYLE_OPTIONS, preferredStyles);
-  const colorLabels = labelsFor(COLOR_OPTIONS, preferredColors);
   const climateLabel = CLIMATE_OPTIONS.find((o) => o.value === climate)?.label || '—';
   const formalityLabel = labelsFor(FORMALITY_OPTIONS, preferredFormality)[0] || '—';
 
@@ -74,7 +73,11 @@ export default function OnboardingCompleteScreen() {
         </View>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.iconWrap}>
           <View style={styles.iconGlow} />
           <View style={styles.iconCircle}>
@@ -91,20 +94,86 @@ export default function OnboardingCompleteScreen() {
 
         <Card elevated style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
-            <MaterialCommunityIcons name="creation" size={18} color={colors.primary} />
+            <MaterialCommunityIcons name="creation" size={18} color={colors.goldAccent} />
             <Text variant="titleMd" style={styles.summaryHeaderText}>
-              AI Interpretation
+              Your preferences
             </Text>
           </View>
 
-          <View style={styles.chipsRow}>
-            <SummaryChip label="AESTHETIC" value={styleLabels.join(', ') || '—'} />
-            <SummaryChip label="COLORS" value={colorLabels.slice(0, 2).join(', ') || '—'} />
-            <SummaryChip label="CLIMATE" value={climateLabel} />
-            <SummaryChip label="FORMALITY" value={formalityLabel} />
+          <View style={styles.summaryBody}>
+            {/* Aesthetic */}
+            <View style={styles.prefSection}>
+              <Text variant="labelCaps" color="secondary" style={styles.prefLabel}>
+                Aesthetic
+              </Text>
+              <View style={styles.tagsRow}>
+                {styleLabels.length > 0 ? (
+                  styleLabels.map((style) => (
+                    <View key={style} style={styles.tagBadge}>
+                      <Text variant="bodySm" style={styles.tagText}>{style}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text variant="bodyMd" color="secondary">—</Text>
+                )}
+              </View>
+            </View>
+
+            {/* Colors */}
+            <View style={styles.prefSection}>
+              <Text variant="labelCaps" color="secondary" style={styles.prefLabel}>
+                Palette
+              </Text>
+              <View style={styles.tagsRow}>
+                {preferredColors.length > 0 ? (
+                  preferredColors.map((colorVal) => {
+                    const colorOpt = COLOR_OPTIONS.find((c) => c.value === colorVal);
+                    const label = colorOpt?.label || colorVal;
+                    const hex = colorOpt?.hex;
+                    return (
+                      <View key={colorVal} style={styles.colorTagBadge}>
+                        {hex && (
+                          <View
+                            style={[
+                              styles.colorDot,
+                              { backgroundColor: hex },
+                              (colorVal === 'white' || colorVal === 'cream') && styles.lightColorDotBorder,
+                            ]}
+                          />
+                        )}
+                        <Text variant="bodySm" style={styles.tagText}>{label}</Text>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <Text variant="bodyMd" color="secondary">—</Text>
+                )}
+              </View>
+            </View>
+
+            {/* Climate & Formality */}
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <Text variant="labelCaps" color="secondary" style={styles.prefLabel}>
+                  Climate
+                </Text>
+                <View style={styles.tagBadge}>
+                  <Text variant="bodySm" style={styles.tagText}>{climateLabel}</Text>
+                </View>
+              </View>
+
+              <View style={styles.metaItem}>
+                <Text variant="labelCaps" color="secondary" style={styles.prefLabel}>
+                  Formality
+                </Text>
+                <View style={styles.tagBadge}>
+                  <Text variant="bodySm" style={styles.tagText}>{formalityLabel}</Text>
+                </View>
+              </View>
+            </View>
           </View>
         </Card>
-      </View>
+      </ScrollView>
 
       <View style={styles.footer}>
         <Button onPress={handleEnterApp} loading={isSubmitting} icon="arrow-right" iconPosition="right">
@@ -115,30 +184,20 @@ export default function OnboardingCompleteScreen() {
   );
 }
 
-function SummaryChip({ label, value }) {
-  return (
-    <View style={styles.chip}>
-      <Text variant="labelCaps" color="secondary">
-        {label}:
-      </Text>
-      <Text variant="bodyMd" style={styles.chipValue}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface },
   progressBar: { paddingHorizontal: spacing.gutter, paddingTop: spacing.stackMd },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.stackSm },
   progressTrack: { height: 2, backgroundColor: colors.surfaceContainerHigh },
   progressFill: { height: '100%', width: '100%', backgroundColor: colors.primary },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: spacing.containerPadding,
+    paddingTop: spacing.stackMd,
+    paddingBottom: spacing.stackLg,
   },
   iconWrap: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.stackMd },
   iconGlow: {
@@ -159,11 +218,31 @@ const styles = StyleSheet.create({
   },
   title: { textAlign: 'center', marginBottom: spacing.stackSm },
   subtitle: { textAlign: 'center', maxWidth: 280, marginBottom: spacing.stackLg },
-  summaryCard: { width: '100%' },
-  summaryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.stackMd },
-  summaryHeaderText: { marginLeft: spacing.stackSm },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.stackSm },
-  chip: {
+  summaryCard: { width: '100%', padding: spacing.stackLg },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.stackMd,
+    paddingBottom: spacing.stackSm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.surfaceContainerHigh,
+  },
+  summaryHeaderText: { marginLeft: spacing.stackSm, fontFamily: 'Inter_600SemiBold' },
+  summaryBody: { gap: spacing.stackMd },
+  prefSection: { gap: 6 },
+  prefLabel: { marginBottom: 2, letterSpacing: 0.8 },
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.stackSm },
+  tagBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.stackMd,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: colors.surfaceContainerHighest,
+  },
+  colorTagBadge: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surfaceContainer,
@@ -171,8 +250,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.stackMd,
     paddingVertical: 6,
     gap: 6,
+    borderWidth: 1,
+    borderColor: colors.surfaceContainerHighest,
   },
-  chipValue: { fontFamily: 'Inter_600SemiBold' },
+  tagText: {
+    fontFamily: 'Inter_500Medium',
+    color: colors.onSurface,
+  },
+  colorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  lightColorDotBorder: {
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: spacing.stackMd,
+    marginTop: 2,
+  },
+  metaItem: {
+    flex: 1,
+    gap: 6,
+  },
   footer: {
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.stackMd,

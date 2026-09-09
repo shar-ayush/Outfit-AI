@@ -33,6 +33,17 @@ export async function getOutfitRecommendations({
     .select('learningPhase')
     .lean()
 
+  // Guard against empty wardrobe — avoid running Gemini / hybrid retrieval when user has no clothes
+  const totalClothes = await Cloth.countDocuments({ userId, isArchived: false })
+  if (totalClothes === 0) {
+    return {
+      outfits: [],
+      message: 'Your wardrobe needs more items. Upload at least tops, bottoms and shoes.',
+      sessionId,
+      intent: precomputedIntent || null,
+    }
+  }
+
   // If session wasn't passed in (e.g. direct /outfits/suggest call, not via stylist chat),
   // load it here exactly as before
   if (!session && sessionId) {
@@ -534,6 +545,21 @@ export async function getOrCreateDailyRecommendation({ userId, date, weatherCont
     }
   }
 
+  // Guard against empty wardrobe — avoid running recommendation pipeline if user has no clothes
+  const totalClothes = await Cloth.countDocuments({ userId, isArchived: false })
+  if (totalClothes === 0) {
+    return {
+      outfit: null,
+      recommendationId: null,
+      weatherAtRecommendation: weatherContext
+        ? { temperature: weatherContext.temperature, condition: weatherContext.condition }
+        : null,
+      message: 'Add a few wardrobe items to get your first outfit suggestion.',
+      sessionId: null,
+      isNew: false,
+    }
+  }
+
   // 2. Generate initial daily suggestion with context-aware prompt
   const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' })
   const query = buildDailyPrompt(date, weatherContext)
@@ -594,6 +620,20 @@ export async function getOrCreateDailyRecommendation({ userId, date, weatherCont
 export async function refreshDailyRecommendation({ userId, date, weatherContext = null, reason = null }) {
   if (!date) {
     throw new ApiError(400, 'Date string (YYYY-MM-DD) is required')
+  }
+
+  // Guard against empty wardrobe
+  const totalClothes = await Cloth.countDocuments({ userId, isArchived: false })
+  if (totalClothes === 0) {
+    return {
+      outfit: null,
+      recommendationId: null,
+      weatherAtRecommendation: weatherContext
+        ? { temperature: weatherContext.temperature, condition: weatherContext.condition }
+        : null,
+      message: 'Add a few wardrobe items to get your first outfit suggestion.',
+      sessionId: null,
+    }
   }
 
   const existing = await DailyRecommendation.findOne({ userId, date })
