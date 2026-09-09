@@ -24,6 +24,40 @@ Most people wear roughly 20% of their wardrobe on repeat, yet keep buying clothe
 
 ---
 
+## App Screenshots
+
+### 1. Home & Daily Weather-Aware Recommendations
+| Daily Curated Recommendation | Scheduled Outfit & Quick Actions |
+|:---:|:---:|
+| <img src="frontend/assets/screenshots/1.jpg" width="280" alt="Daily Recommendation" /> | <img src="frontend/assets/screenshots/2.jpg" width="280" alt="Scheduled Outfit" /> |
+| *Weather-aware recommendation with real-time temperature, styling note & action triggers* | *Today's planned look with quick actions for Try-On, Style Chat, and Week Planning* |
+
+### 2. AI Stylist Chat & Multi-Turn Refinements
+| Conversational Stylist & Scores | Weather Adaptation (Rain) | Slot Swap (Pink Top) | Continual Refinement (Denim) |
+|:---:|:---:|:---:|:---:|
+| <img src="frontend/assets/screenshots/3.jpg" width="220" alt="Stylist Chat" /> | <img src="frontend/assets/screenshots/4.jpg" width="220" alt="Weather Adaptation" /> | <img src="frontend/assets/screenshots/5.jpg" width="220" alt="Slot Swap Refinement" /> | <img src="frontend/assets/screenshots/6.jpg" width="220" alt="Continual Refinement" /> |
+| *Real-time compatibility & personalization scoring breakdown* | *Automatic adaptation to rainy conditions and weather changes* | *Multi-turn intent merging & slot swap retaining other items* | *Conversational continuity across multiple styling turns* |
+
+### 3. Digital Wardrobe & Inventory Management
+| Tops & Wear Tracking | Bottoms & Formality Filter |
+|:---:|:---:|
+| <img src="frontend/assets/screenshots/7.jpg" width="280" alt="Wardrobe Tops" /> | <img src="frontend/assets/screenshots/8.jpg" width="280" alt="Wardrobe Bottoms" /> |
+| *Categorized inventory with wear-frequency counters and color dots* | *Fast category and formality filtering (Casual, Semi-Formal, Formal)* |
+
+### 4. Weekly Outfit Planner & Visual Designer
+| 7-Day Weekly Calendar | Visual Outfit Composition Canvas |
+|:---:|:---:|
+| <img src="frontend/assets/screenshots/9.jpg" width="280" alt="Weekly Planner" /> | <img src="frontend/assets/screenshots/10.jpg" width="280" alt="Outfit Designer Canvas" /> |
+| *Calendar week overview with planned look previews and status chips* | *Layer-by-layer outfit visual designer (top, outer, bottom, shoes)* |
+
+### 5. AI Virtual Try-On Studio
+| Original Model Photo | Photorealistic AI Try-On Result |
+|:---:|:---:|
+| <img src="frontend/assets/screenshots/11.jpg" width="280" alt="Virtual Try-On Original" /> | <img src="frontend/assets/screenshots/12.jpg" width="280" alt="Virtual Try-On AI Result" /> |
+| *Reference photo with target garment selection* | *Photorealistic AI try-on visualization* |
+
+---
+
 ## Core Feature 1 — Agentic RAG Recommendation Engine
 
 This is the centerpiece of the system. Every outfit request — whether triggered by the user, the chatbot, or the daily recommendation — flows through a **5-stage pipeline**.
