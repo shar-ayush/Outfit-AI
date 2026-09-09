@@ -33,6 +33,7 @@ import { useClothItem, useToggleAvailability, useArchiveCloth, useDeleteClothPer
 import { useItemWearHistory } from '@/hooks/useWearLogs';
 import { useUIStore } from '@/stores';
 import { COLOR_HEX_MAP, getClothColorHex } from '@/constants/categories';
+import { formatRelativeDate } from '@/utils/dateUtils';
 import { colors, spacing, radius } from '@/theme';
 
 
