@@ -20,6 +20,7 @@ import { parseLocalDate } from '@/utils/dateUtils';
 import { useWardrobeList } from '@/hooks/useWardrobe';
 import { useCreateOutfit } from '@/hooks/useOutfits';
 import { useCreatePlan } from '@/hooks/usePlans';
+import { useUIStore } from '@/stores';
 import { COLOR_HEX_MAP, getClothColorHex } from '@/constants/categories';
 import { colors, spacing, radius, shadows } from '@/theme';
 
