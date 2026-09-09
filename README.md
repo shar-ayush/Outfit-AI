@@ -9,21 +9,6 @@ Most people wear roughly 20% of their wardrobe on repeat, yet keep buying clothe
 3. **Smart outfit recommendations that factor in weather, occasion, and your own evolving taste** — not just "these colors look nice together."
 
 ---
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| **Mobile** | React Native (Expo Router), Zustand, React Query |
-| **Backend** | Node.js, Express.js (v5) |
-| **Database** | MongoDB Atlas + Atlas Vector Search |
-| **AI — Inference** | Google Gemini (`gemini-3.5-flash-lite`) |
-| **AI — Embeddings** | Google Gemini (`gemini-embedding-001`, 768-dim) |
-| **AI — Agentic orchestration** | Gemini native function-calling API |
-| **Image Storage** | Cloudinary |
-
----
-
 ## App Screenshots
 
 ### 1. Home & Daily Weather-Aware Recommendations
@@ -55,6 +40,19 @@ Most people wear roughly 20% of their wardrobe on repeat, yet keep buying clothe
 |:---:|:---:|
 | <img src="frontend/assets/screenshots/11.jpg" width="280" alt="Virtual Try-On Original" /> | <img src="frontend/assets/screenshots/12.jpg" width="280" alt="Virtual Try-On AI Result" /> |
 | *Reference photo with target garment selection* | *Photorealistic AI try-on visualization* |
+
+---
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Mobile** | React Native (Expo Router), Zustand, React Query |
+| **Backend** | Node.js, Express.js (v5) |
+| **Database** | MongoDB Atlas + Atlas Vector Search |
+| **AI — Inference** | Google Gemini (`gemini-3.5-flash-lite`) |
+| **AI — Embeddings** | Google Gemini (`gemini-embedding-001`, 768-dim) |
+| **AI — Agentic orchestration** | Gemini native function-calling API |
+| **Image Storage** | Cloudinary |
 
 ---
 
