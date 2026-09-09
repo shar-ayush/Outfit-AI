@@ -1,7 +1,3 @@
-// src/api/analytics.js
-//
-// Maps 1:1 to backend/src/routes/analytics.js
-
 import apiClient from './client';
 
 export async function getDashboard() {
@@ -16,12 +12,12 @@ export async function getCostPerWear() {
 
 export async function getWearFrequency(limit = 10) {
   const { data } = await apiClient.get('/analytics/wear-frequency', { params: { limit } });
-  return data.data; // { mostWorn, leastWorn, neverWorn }
+  return data.data;
 }
 
 export async function getSleepingItems() {
   const { data } = await apiClient.get('/analytics/sleeping-items');
-  return data.data; // { items, count, tip }
+  return data.data;
 }
 
 export async function getUtilization() {

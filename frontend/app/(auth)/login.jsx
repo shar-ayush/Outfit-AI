@@ -1,9 +1,3 @@
-// app/(auth)/login.jsx
-//
-// Matches login_screen/code.html: AuthHeader, "Welcome back" title, outlined
-// email/password inputs, remember-me + forgot-password row, primary submit,
-// sign-up footer link.
-
 import React, { useEffect, useState } from 'react';
 import { View, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
@@ -126,29 +120,6 @@ export default function LoginScreen() {
                 />
               )}
             />
-
-            {/* <View style={styles.optionsRow}>
-              <Pressable style={styles.rememberRow} onPress={() => setRememberMe((v) => !v)}>
-                <MaterialCommunityIcons
-                  name={rememberMe ? 'checkbox-marked' : 'checkbox-blank-outline'}
-                  size={18}
-                  color={rememberMe ? colors.primary : colors.secondary}
-                />
-                <Text variant="bodyMd" color="secondary" style={styles.rememberLabel}>
-                  Remember me
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() =>
-                  showToast('Password reset is coming soon — contact support for now.', 'info')
-                }
-              >
-                <Text variant="bodyMd" style={styles.forgotLink}>
-                  Forgot password?
-                </Text>
-              </Pressable>
-            </View> */}
 
             {submitError && (
               <Text variant="bodyMd" color="error" style={styles.submitError}>

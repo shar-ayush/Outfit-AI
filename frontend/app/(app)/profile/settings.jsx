@@ -1,24 +1,3 @@
-// app/(app)/profile/settings.jsx
-//
-// UPDATE: the "Data" section (Export, Clear Conversations, Delete All
-// Wear Logs) was previously omitted entirely because the backend had no
-// bulk-delete endpoints and no export capability. Both gaps are now
-// fixed:
-//   - Export uses a real client-side export (exportWardrobe.js) — no
-//     backend change needed for this one, it just wasn't built yet.
-//   - Clear Conversations / Delete All Wear Logs use the new
-//     DELETE /stylist/sessions and DELETE /wear-logs bulk endpoints
-//     (backend fix #4).
-//
-// Appearance and notification toggles remain intentionally omitted — see
-// the reasoning below, unchanged from the original decision.
-//   - Appearance (light/dark toggle): the theme system (Step 2) only
-//     defines one palette. A toggle that doesn't change anything visible
-//     would be a decorative dead control.
-//   - Notification toggles: a real implementation needs the full
-//     expo-notifications permission + scheduling flow, which is a
-//     substantial feature on its own — deferred rather than half-built.
-
 import React, { useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';

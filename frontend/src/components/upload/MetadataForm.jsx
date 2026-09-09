@@ -1,12 +1,3 @@
-// src/components/upload/MetadataForm.jsx
-//
-// Optional collapsible fields shown after image capture — per plan,
-// "Skippable — most users won't fill these immediately." Kept as
-// uncontrolled-friendly (parent owns state) simple inputs rather than a
-// full react-hook-form instance since there's no validation need here
-// (all fields optional, backend has no required-field constraints beyond
-// the image itself).
-
 import React, { useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

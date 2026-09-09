@@ -1,14 +1,3 @@
-// app/(auth)/onboarding/complete.jsx
-//
-// Matches profile_ready_step_4/code.html: celebratory check icon, heading,
-// an "AI Interpretation" summary card, sticky "Enter the App" CTA.
-//
-// Unlike the static mock (which hardcodes "Neutral"/"Tailored" placeholder
-// chips), this screen builds the summary from the user's ACTUAL selections
-// collected across the previous 3 steps — submits them to
-// POST /api/user/onboarding on mount... actually on button press, not
-// mount, so a failed submit doesn't strand the user mid-animation.
-
 import React, { useState } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -101,7 +90,6 @@ export default function OnboardingCompleteScreen() {
           </View>
 
           <View style={styles.summaryBody}>
-            {/* Aesthetic */}
             <View style={styles.prefSection}>
               <Text variant="labelCaps" color="secondary" style={styles.prefLabel}>
                 Aesthetic
@@ -119,7 +107,6 @@ export default function OnboardingCompleteScreen() {
               </View>
             </View>
 
-            {/* Colors */}
             <View style={styles.prefSection}>
               <Text variant="labelCaps" color="secondary" style={styles.prefLabel}>
                 Palette
@@ -151,7 +138,6 @@ export default function OnboardingCompleteScreen() {
               </View>
             </View>
 
-            {/* Climate & Formality */}
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
                 <Text variant="labelCaps" color="secondary" style={styles.prefLabel}>

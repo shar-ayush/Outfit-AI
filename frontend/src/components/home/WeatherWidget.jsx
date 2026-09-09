@@ -1,12 +1,3 @@
-// src/components/home/WeatherWidget.jsx
-//
-// Matches home_dashboard's weather pill exactly: rounded-full, low-surface
-// bg, gold sun icon, temperature in label-caps. Tapping shows a toast with
-// the fuller condition text since there's no dedicated weather-detail
-// screen in the plan ("Tapping weather opens a detail view" was aspirational
-// scope — a full detail screen adds a route for one line of extra text,
-// so a toast serves the same purpose without the overhead).
-
 import React from 'react';
 import { Pressable, View, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -28,7 +19,7 @@ export default function WeatherWidget() {
   }
 
   if (isError || !weather) {
-    return null; // fail silently — daily outfit card falls back to no weather context
+    return null;
   }
 
   return (

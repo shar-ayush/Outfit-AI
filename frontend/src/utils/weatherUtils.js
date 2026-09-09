@@ -1,18 +1,3 @@
-// src/utils/weatherUtils.js
-//
-// DEVIATION FROM PLAN: frontend-design-plan.md specifies OpenWeather, which
-// requires an API key you'd need to sign up for and store as a secret.
-// Using Open-Meteo instead — a free, no-API-key weather API — so the app
-// works out of the box for anyone cloning this project. Swap this file for
-// an OpenWeather-backed implementation later if you want richer data
-// (minute-level forecasts, etc.); the return shape below is what the rest
-// of the app (useWeather hook, WeatherWidget, Home's daily query builder)
-// depends on, so keep it stable if you do swap providers.
-
-// WMO Weather interpretation codes (used by Open-Meteo) collapsed into the
-// small vocabulary the backend's intent extraction understands
-// (hot/cold/mild/rain — see intentService.js VALID.weather) plus a
-// human-readable condition string and a MaterialCommunityIcons name.
 function interpretWeatherCode(code) {
   if (code === 0) return { condition: 'Clear sky', icon: 'weather-sunny' };
   if ([1, 2].includes(code)) return { condition: 'Partly cloudy', icon: 'weather-partly-cloudy' };
@@ -25,9 +10,6 @@ function interpretWeatherCode(code) {
   return { condition: 'Clear', icon: 'weather-sunny' };
 }
 
-// Maps a temperature to the coarse bucket the backend's outfit-suggestion
-// pipeline expects for weatherSuitability filtering (see hybridRetrieval.js
-// / intentService.js VALID.weather).
 export function temperatureToWeatherSuitability(tempCelsius) {
   if (tempCelsius > 28) return 'hot';
   if (tempCelsius < 15) return 'cold';

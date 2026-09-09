@@ -1,26 +1,3 @@
-// backend/src/services/learning/signalProcessor.js
-//
-// FIX (gap #3): RecommendationEvent creation previously only happened
-// inline in outfitController/outfitService.recordOutfitAction. Both
-// wearLogController.logWear and planController.updatePlanStatus call
-// processSignal() directly and never created a RecommendationEvent or
-// updated Recommendation.status — even though both accept/have a
-// recommendationId available. This means most real-world "worn" signals
-// (which happen via Plans or direct wear logs, not the outfit-action
-// endpoint) left no event audit trail at all, breaking the "future
-// collaborative filtering" capability backend-features.md describes.
-//
-// FIX: processSignal now optionally accepts `recommendationId` and, when
-// present, creates the RecommendationEvent and updates the Recommendation
-// status itself — one place, every caller benefits. The duplicate
-// inline creation in outfitService.recordOutfitAction should be REMOVED
-// now that this is centralized (see outfitService_FIX.js).
-//
-// ALSO FIXES a real bug: wearLogController.js destructures
-// `recommendationId` from req.body but never forwarded it to
-// processSignal() — it was silently dropped. See
-// wearLogController_FIX.js for that one-line fix.
-
 import ItemPreference from '../../models/ItemPreference.js'
 import PairPreference from '../../models/PairPreference.js'
 import ContextPreference from '../../models/ContextPreference.js'
@@ -43,14 +20,6 @@ export const SIGNAL_WEIGHTS = {
   rejected: { item: -0.15, pair: -0.20, isPositive: false },
   skipped:  { item: -0.05, pair: -0.08, isPositive: false },
 }
-
-// ─────────────────────────────────────────────
-// Main entry point — called on every user action.
-// NEW: `recommendationId` (optional) — when provided, also logs a
-// RecommendationEvent and marks the Recommendation as 'interacted'.
-// This is now the ONE place that happens, called from outfit actions,
-// wear logs, AND plan status updates alike.
-// ─────────────────────────────────────────────
 
 export async function processSignal({
   userId,
@@ -84,7 +53,6 @@ export async function processSignal({
       await updateClothWearStats(clothIds)
     }
 
-    // ── NEW: centralized RecommendationEvent logging ──────────────
     if (recommendationId) {
       await RecommendationEvent.create({
         userId,

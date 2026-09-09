@@ -5,22 +5,11 @@ import User from '../models/User.js'
 import ItemPreference from '../models/ItemPreference.js'
 import ContextPreference from '../models/ContextPreference.js'
 
-// ─────────────────────────────────────────────
-// Get profile
-// GET /api/user/profile
-// ─────────────────────────────────────────────
-
 export const getProfile = asyncHandler(async (req, res) => {
   return res.json(
     new ApiResponse(200, { user: req.user }, 'Profile fetched')
   )
 })
-
-// ─────────────────────────────────────────────
-// Update profile
-// PATCH /api/user/profile
-// Body: { username, gender }
-// ─────────────────────────────────────────────
 
 export const updateProfile = asyncHandler(async (req, res) => {
   const { username, gender } = req.body
@@ -55,13 +44,6 @@ export const updateProfile = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Complete onboarding quiz
-// POST /api/user/onboarding
-// Body: { preferredStyles, preferredColors, preferredFormality, climate }
-// Seeds the cold-start preference profile
-// ─────────────────────────────────────────────
-
 export const completeOnboarding = asyncHandler(async (req, res) => {
   const {
     preferredStyles    = [],
@@ -84,9 +66,6 @@ export const completeOnboarding = asyncHandler(async (req, res) => {
     { new: true }
   )
 
-  // Seed context preferences from quiz answers
-  // This gives the recommendation engine something to work with
-  // before any wear data exists (cold start)
   if (preferredStyles.length > 0 || preferredColors.length > 0) {
     const occasions = ['casual', 'office', 'formal', 'party', 'date']
 
@@ -100,7 +79,7 @@ export const completeOnboarding = asyncHandler(async (req, res) => {
 
         const colorFrequency = {}
         preferredColors.forEach(color => {
-          colorFrequency[color.toLowerCase()] = 2 // seed with weight 2
+          colorFrequency[color.toLowerCase()] = 2
         })
 
         const styleFrequency = {}
@@ -132,12 +111,6 @@ export const completeOnboarding = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Change password
-// POST /api/user/change-password
-// Body: { currentPassword, newPassword }
-// ─────────────────────────────────────────────
-
 export const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body
 
@@ -157,7 +130,6 @@ export const changePassword = asyncHandler(async (req, res) => {
   }
 
   user.password = newPassword
-  // Clear all refresh tokens on password change
   user.refreshTokens = []
   await user.save()
 
@@ -165,13 +137,6 @@ export const changePassword = asyncHandler(async (req, res) => {
     new ApiResponse(200, {}, 'Password changed. Please log in again.')
   )
 })
-
-// ─────────────────────────────────────────────
-// Get user preference summary
-// GET /api/user/preferences
-// Shows what the system has learned about the user
-// Useful for a "your style profile" screen
-// ─────────────────────────────────────────────
 
 export const getPreferences = asyncHandler(async (req, res) => {
   const [itemPrefs, contextPrefs] = await Promise.all([
@@ -189,7 +154,6 @@ export const getPreferences = asyncHandler(async (req, res) => {
       .lean(),
   ])
 
-  // Top 5 favorite items
   const favoriteItems = itemPrefs
     .filter(p => p.score > 0.7 && p.confidence > 0.2)
     .slice(0, 5)
@@ -199,7 +163,6 @@ export const getPreferences = asyncHandler(async (req, res) => {
       wornCount:  p.signals.worn,
     }))
 
-  // Context summaries — what style per occasion
   const contextSummaries = contextPrefs.map(ctx => {
     const toEntries = (val) => {
       if (!val) return []
@@ -232,12 +195,6 @@ export const getPreferences = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Delete account
-// DELETE /api/user/account
-// Body: { password }
-// ─────────────────────────────────────────────
-
 export const deleteAccount = asyncHandler(async (req, res) => {
   const { password } = req.body
   if (!password) throw new ApiError(400, 'Password required to delete account')
@@ -246,7 +203,6 @@ export const deleteAccount = asyncHandler(async (req, res) => {
   const isValid = await user.comparePassword(password)
   if (!isValid) throw new ApiError(401, 'Incorrect password')
 
-  // Cascade delete all user data
   const userId = req.user._id
   await Promise.all([
     (await import('../models/Cloth.js')).default.deleteMany({ userId }),

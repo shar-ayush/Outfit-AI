@@ -1,11 +1,3 @@
-// app/(modals)/item-edit.jsx
-//
-// Every field here maps exactly to `allowedFields` in
-// wardrobeService.updateCloth: name, brand, purchasePrice, notes,
-// occasions, season, formality, isAvailable. Nothing extra, nothing
-// fabricated - this is a direct mirror of what PATCH /api/wardrobe/:id
-// actually accepts.
-
 import React, { useState, useEffect } from 'react';
 import { View, Pressable, TextInput, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';

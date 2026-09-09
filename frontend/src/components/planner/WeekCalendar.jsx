@@ -1,10 +1,3 @@
-// src/components/planner/WeekCalendar.jsx
-//
-// Backed by the real GET /api/plans/week response - each day already
-// carries { date, dayOfWeek, plan } from the backend's fill-the-gaps
-// logic (planController.getWeekPlan), so "empty circle vs filled" reads
-// directly off `plan === null`.
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';

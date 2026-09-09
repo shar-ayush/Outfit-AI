@@ -2,11 +2,6 @@ import ItemPreference from '../../models/ItemPreference.js'
 import { computeItemScore } from '../recommendation/personalizationService.js'
 import mongoose from 'mongoose'
 
-// ─────────────────────────────────────────────
-// Update ItemPreference for every cloth in an outfit
-// Uses upsert — creates record if first interaction
-// ─────────────────────────────────────────────
-
 export async function updateItemPreferences({
   userId,
   clothIds,
@@ -34,10 +29,8 @@ async function updateSingleItemPreference({
     ? new mongoose.Types.ObjectId(clothId)
     : clothId
 
-  // Build the signal increment based on event type
   const signalIncrement = buildSignalIncrement(eventType, rating)
 
-  // Upsert — creates with defaults if doesn't exist
   const pref = await ItemPreference.findOneAndUpdate(
     { userId, clothId: cid },
     {
@@ -58,8 +51,6 @@ async function updateSingleItemPreference({
     }
   )
 
-  // Recalculate score from raw signals
-  // This keeps score consistent with signal weights
   const newScore      = computeItemScore(pref.signals)
   const newConfidence = computeConfidence(pref.signals)
 
@@ -68,10 +59,6 @@ async function updateSingleItemPreference({
     confidence: parseFloat(newConfidence.toFixed(4)),
   })
 }
-
-// ─────────────────────────────────────────────
-// Map event type to the correct signal field
-// ─────────────────────────────────────────────
 
 function buildSignalIncrement(eventType, rating) {
   const inc = {}
@@ -103,12 +90,6 @@ function buildSignalIncrement(eventType, rating) {
   return { inc }
 }
 
-// ─────────────────────────────────────────────
-// Confidence grows with total interactions
-// but decays if negative signals dominate
-// Range: 0.0 to 1.0
-// ─────────────────────────────────────────────
-
 function computeConfidence(signals) {
   const positive = (signals.worn || 0) + (signals.saved || 0) + (signals.shared || 0)
   const negative = (signals.rejected || 0) + (signals.skipped || 0)
@@ -116,11 +97,8 @@ function computeConfidence(signals) {
 
   if (total === 0) return 0.0
 
-  // Confidence grows with more data but is bounded
-  // 10 interactions → ~0.63, 20 → ~0.82, 30 → ~0.90
   const dataMaturiy = 1 - Math.exp(-total / 15)
 
-  // Quality — penalize if many negatives
   const qualityRatio = total > 0 ? Math.max(0, (positive - negative) / total) : 0.5
 
   return parseFloat(

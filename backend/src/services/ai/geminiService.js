@@ -1,11 +1,6 @@
 import { getStructuredModel, getGenerativeModel } from '../../config/gemini.js'
 import ApiError from '../../utils/ApiError.js'
 
-// ─────────────────────────────────────────────
-// Extract clothing metadata from image
-// Called during upload pipeline
-// ─────────────────────────────────────────────
-
 export async function extractClothingMetadata(imageBuffer, mimeType = 'image/jpeg') {
   const model = getStructuredModel()
 
@@ -55,12 +50,10 @@ Example embeddingText: "A slim-fit navy blue formal dress shirt in cotton fabric
     const text   = result.response.text()
     const parsed = JSON.parse(text)
 
-    // Validate required fields
     if (!parsed.category || !parsed.color?.primary) {
       throw new ApiError(422, 'Gemini could not extract valid metadata from this image')
     }
 
-    // Sanitize hex if returned
     if (parsed.color?.hex && typeof parsed.color.hex === 'string') {
       let h = parsed.color.hex.trim()
       if (!h.startsWith('#')) h = `#${h}`
@@ -81,11 +74,6 @@ Example embeddingText: "A slim-fit navy blue formal dress shirt in cotton fabric
     throw new ApiError(500, `Gemini metadata extraction failed: ${error.message}`)
   }
 }
-
-// ─────────────────────────────────────────────
-// Batch metadata extraction — multiple images in one call
-// Reduces API calls by 5-10x for bulk uploads
-// ─────────────────────────────────────────────
 
 export async function extractBatchMetadata(imageBuffers) {
   const model = getStructuredModel()
@@ -162,11 +150,6 @@ Return ONLY the JSON array. No explanation. No markdown.
   }
 }
 
-// ─────────────────────────────────────────────
-// Generate outfit reasoning for final selected outfits
-// Single call for all outfits — not one per outfit
-// ─────────────────────────────────────────────
-
 export async function generateOutfitReasonings(outfits, userQuery, intent) {
   const model = getStructuredModel()
 
@@ -214,20 +197,9 @@ Return a JSON array with exactly ${outfits.length} objects:
     const parsed = JSON.parse(result.response.text())
     return Array.isArray(parsed) ? parsed : []
   } catch {
-    // Return empty — caller handles fallback
     return []
   }
 }
-
-// ─────────────────────────────────────────────
-// Outfit composition — replaces llmReRankOutfits.
-// Instead of blindly re-ranking a top-15 list, this
-// selects final outfits with explicit awareness of
-// which slots the user locked (slotConstraints) and
-// which they didn't — enforcing variety only on the
-// free slots, and requiring an honest explanation
-// whenever a locked slot couldn't be satisfied exactly.
-// ─────────────────────────────────────────────
 
 export async function composeOutfitsFromPool(candidates, userQuery, conversationHistory = [], intent, count = 3) {
   const model = getStructuredModel()
@@ -364,7 +336,6 @@ Return ONLY a JSON array of up to ${count} objects (at least 1, at most ${count}
     }))
   } catch (error) {
     console.error('composeOutfitsFromPool failed, falling back to top algorithmic candidates:', error.message)
-    // Fallback — same safety net pattern as the old llmReRankOutfits catch block
     return candidates.slice(0, count).map((combo, i) => ({
       items:      combo.items,
       score:      combo.score,
@@ -378,21 +349,10 @@ Return ONLY a JSON array of up to ${count} objects (at least 1, at most ${count}
   }
 }
 
-// ─────────────────────────────────────────────
-// Single-outfit retry — called only when verification
-// finds an unexplained constraint violation. Re-composes
-// exactly one replacement outfit from the same candidate
-// pool, explicitly excluding the items that just failed,
-// with stricter framing than the original compose prompt.
-// ─────────────────────────────────────────────
-
 export async function recomposeSingleOutfit(candidates, userQuery, intent, excludeItemIds = []) {
   const model = getStructuredModel()
   const slotConstraints = intent?.slotConstraints || {}
 
-  // Prefer candidates that don't fully reuse the failed outfit's items,
-  // but fall back to the full pool if nothing else is available —
-  // a small wardrobe may not have a genuinely different option.
   const filtered = candidates.filter(c =>
     !c.items.every(item => excludeItemIds.includes(item._id.toString()))
   )
@@ -454,6 +414,6 @@ Return ONLY one JSON object:
     }
   } catch (error) {
     console.error('recomposeSingleOutfit failed:', error.message)
-    return null // caller keeps the original, unresolved outfit rather than losing it entirely
+    return null
   }
 }

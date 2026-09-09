@@ -1,24 +1,3 @@
-// app/(modals)/outfit-detail.jsx
-//
-// Backed by GET /api/outfits/:outfitId (outfitService.getOutfitById) -
-// full Outfit doc, items populated with everything except the embedding
-// vector.
-//
-// UPDATE: the backend gap described below has been FIXED —
-// compatibilityScorer now actually computes per-category scores (see
-// backend-fixes/services/recommendation/compatibilityScorer.js), so
-// Outfit.scoreBreakdown is real for any outfit created after that fix is
-// applied. This screen now renders it via <OutfitScore>. Outfits created
-// BEFORE the fix will still have an empty scoreBreakdown — OutfitScore
-// handles that gracefully by rendering nothing rather than empty bars.
-//
-// Also new: fetches the outfit's Recommendation document (backend fix #2
-// — this route didn't exist before) and shows the real
-// algorithm/personalization/freshness breakdown via the same
-// <ScoreBreakdown> component the Stylist chat uses — reused, not
-// duplicated. This is `null` for outfits that were user-created rather
-// than AI-suggested, which is expected, not an error.
-
 import React, { useState } from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -53,11 +32,6 @@ export default function OutfitDetailModal() {
   if (isLoading) return <LoadingSpinner fullScreen />;
   if (isError || !outfit) return <ErrorState onRetry={refetch} />;
 
-  // Map Recommendation.scores {final, compatibility, personalization,
-  // novelty} onto the shape <ScoreBreakdown> already expects {total,
-  // algorithm, personalization, noveltyPenalty} — same component, no
-  // duplication, just a field-name translation between two collections
-  // that independently chose slightly different naming.
   const rankingScore = recommendation?.scores
     ? {
       total: recommendation.scores.final,
@@ -79,11 +53,6 @@ export default function OutfitDetailModal() {
         onSettled: () => setActionLoading(null),
       });
     } else {
-      // No recommendationId available here (this screen can be reached from
-      // Wear History / Planner, not just a fresh suggestion) - the backend
-      // treats it as optional and still runs the full learning pipeline,
-      // it just skips creating a RecommendationEvent (see
-      // outfitService.recordOutfitAction).
       outfitAction.mutate(
         { outfitId, action: 'saved' },
         {

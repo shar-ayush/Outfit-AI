@@ -1,5 +1,3 @@
-// src/hooks/useAnalytics.js
-
 import { useQuery } from '@tanstack/react-query';
 import { analyticsApi } from '@/api';
 import { QUERY_KEYS } from '@/constants/queryKeys';

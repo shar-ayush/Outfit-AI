@@ -1,18 +1,4 @@
-// src/api/wardrobe.js
-//
-// Maps 1:1 to backend/src/routes/wardrobe.js
-//
-// Upload endpoints use multipart/form-data — built via native FormData.
-// On React Native, a file field needs { uri, name, type } rather than a
-// Blob/File object (that's a web-only API).
-
 import apiClient from './client';
-
-// ─────────────────────────────────────────────
-// Upload single item
-// asset: { uri, fileName?, mimeType? } — shape returned by expo-image-picker
-// extra: { purchasePrice?, purchaseCurrency?, purchaseDate?, brand?, name?, notes? }
-// ─────────────────────────────────────────────
 
 export async function uploadCloth(asset, extra = {}) {
   const formData = new FormData();
@@ -35,10 +21,6 @@ export async function uploadCloth(asset, extra = {}) {
   return data.data.cloth;
 }
 
-// ─────────────────────────────────────────────
-// Bulk upload — up to 20 assets
-// ─────────────────────────────────────────────
-
 export async function uploadBulkClothes(assets) {
   const formData = new FormData();
 
@@ -53,16 +35,12 @@ export async function uploadBulkClothes(assets) {
   const { data } = await apiClient.post('/wardrobe/upload/bulk', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return data.data; // { uploaded, failed, items, errors }
+  return data.data;
 }
-
-// ─────────────────────────────────────────────
-// Wardrobe CRUD
-// ─────────────────────────────────────────────
 
 export async function getWardrobe(params = {}) {
   const { data } = await apiClient.get('/wardrobe', { params });
-  return data.data; // { clothes, pagination }
+  return data.data;
 }
 
 export async function getClothById(clothId) {
@@ -77,7 +55,7 @@ export async function updateCloth(clothId, updateData) {
 
 export async function toggleAvailability(clothId) {
   const { data } = await apiClient.patch(`/wardrobe/${clothId}/availability`);
-  return data.data; // { clothId, isAvailable }
+  return data.data;
 }
 
 export async function archiveCloth(clothId) {

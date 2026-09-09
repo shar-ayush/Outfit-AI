@@ -5,16 +5,9 @@ import { searchWardrobe, searchWardrobeDeclaration } from './wardrobeSearchTool.
 import { vectorSearchWardrobe, groupByCategory } from '../ai/embeddingService.js'
 
 const FETCH_LIMIT = 15
-const MAX_TOTAL_TOOL_CALLS = 10   // hard ceiling across the whole loop
-const MAX_CALLS_PER_CATEGORY = 3   // matches searchWardrobeDeclaration's stated limit
+const MAX_TOTAL_TOOL_CALLS = 10
+const MAX_CALLS_PER_CATEGORY = 3
 const REQUIRED_SLOTS = ['top', 'bottom', 'footwear']
-
-// ─────────────────────────────────────────────
-// Strip items down to what the LLM needs to see to decide
-// whether a slot needs relaxing. Full item objects are kept
-// separately for actual candidate generation — this summary
-// only goes back to Gemini as the functionResponse payload.
-// ─────────────────────────────────────────────
 
 function summarizeForLLM(items, limit = 8) {
   return items
@@ -66,12 +59,6 @@ you do not need to write a summary or explanation.
   `.trim()
 }
 
-// ─────────────────────────────────────────────
-// Agentic retrieval — the LLM decides which categories to
-// search, with what constraints, and whether to relax them.
-// Falls back to fixed parallel retrieval on hard failure.
-// ─────────────────────────────────────────────
-
 async function agenticRetrieval(userId, userQuery, intent) {
   const model = getGenAI().getGenerativeModel({
     model: 'gemini-3.5-flash-lite',
@@ -81,8 +68,8 @@ async function agenticRetrieval(userId, userQuery, intent) {
   const contents = [
     { role: 'user', parts: [{ text: buildRetrievalPrompt(userQuery, intent) }] }
   ]
-  const collected = {}       // category -> Map<itemId, fullItem>
-  const trail = []       // debug/audit trail — every tool call made
+  const collected = {}
+  const trail = []
   const callCountByCategory = {}
   let totalCalls = 0
 
@@ -159,10 +146,6 @@ async function agenticRetrieval(userId, userQuery, intent) {
     calls = res.response.functionCalls() || []
   }
 
-  // ── Defensive floor ──
-  // The LLM might skip a required slot entirely, or decide not to call
-  // any tool at all. Guarantee at least one attempt per required slot
-  // so candidate generation downstream always has something to work with.
   for (const slot of REQUIRED_SLOTS) {
     if (!collected[slot] || collected[slot].size === 0) {
       const fallbackArgs = {
@@ -215,12 +198,6 @@ async function agenticRetrieval(userId, userQuery, intent) {
     agenticLoopUsed: true,
   }
 }
-
-// ─────────────────────────────────────────────
-// Fallback path — the OLD fixed parallel retrieval,
-// kept verbatim in behavior. Used only if the agentic
-// loop throws (API error, safety block, SDK failure).
-// ─────────────────────────────────────────────
 
 function buildFilter(userId, intent, relaxLevel = 0) {
   const uid = typeof userId === 'string'
@@ -309,11 +286,6 @@ async function fallbackRetrieval(userId, userQuery, intent) {
     agenticLoopUsed: false,
   }
 }
-
-// ─────────────────────────────────────────────
-// Public entry point — unchanged signature, so
-// outfitService.js needs no changes for this step.
-// ─────────────────────────────────────────────
 
 export async function hybridRetrieval(userId, userQuery, intent) {
   try {

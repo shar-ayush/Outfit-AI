@@ -1,15 +1,9 @@
-// src/utils/validators.js
-//
-// Shared validation used by React Hook Form `rules={}` props across the
-// auth screens (and later, item-edit / onboarding forms).
-
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function isValidEmail(value) {
   return EMAIL_REGEX.test(String(value).trim());
 }
 
-// React Hook Form rule objects — spread directly into <Controller rules={...}>
 export const emailRules = {
   required: 'Email is required',
   validate: (value) => isValidEmail(value) || 'Enter a valid email address',
@@ -24,7 +18,6 @@ export const usernameRules = {
   },
 };
 
-// Matches backend's `password.length < 8` check exactly (authController.js)
 export const passwordRules = {
   required: 'Password is required',
   minLength: { value: 8, message: 'Password must be at least 8 characters' },
@@ -33,12 +26,6 @@ export const passwordRules = {
 export const loginPasswordRules = {
   required: 'Password is required',
 };
-
-// ─────────────────────────────────────────────
-// Password strength — client-side only, cosmetic (matches register_screen
-// mock's strength bar). Backend only enforces the 8-char minimum; this is
-// purely to guide the user toward a stronger password.
-// ─────────────────────────────────────────────
 
 const STRENGTH_LEVELS = [
   { label: 'Weak', color: 'error' },

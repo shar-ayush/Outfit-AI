@@ -1,21 +1,10 @@
-// src/stores/onboardingStore.js
-//
-// Scratch state for the 4-step onboarding wizard — collects answers across
-// separate route files (style-quiz → color-quiz → climate-quiz → complete)
-// since Expo Router doesn't pass complex state through navigation params.
-//
-// Not part of the original store list in the design plan, but necessary
-// for the same reason AuthHeader was pulled into common/: it's shared,
-// small, and would otherwise duplicate logic. Reset after submission so a
-// second onboarding attempt (e.g. after logout/re-register) starts clean.
-
 import { create } from 'zustand';
 
 export const useOnboardingStore = create((set) => ({
-  preferredStyles: [],       // string[] — from STYLE_OPTIONS values
-  preferredColors: [],       // string[] — from COLOR_OPTIONS values
-  climate: null,             // string — from CLIMATE_OPTIONS values
-  preferredFormality: [],    // string[] — backend expects an array; UI is single-select
+  preferredStyles: [],
+  preferredColors: [],
+  climate: null,
+  preferredFormality: [],
 
   toggleStyle: (value) => set((state) => ({
     preferredStyles: state.preferredStyles.includes(value)

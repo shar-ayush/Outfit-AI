@@ -1,13 +1,3 @@
-// src/components/outfit/OutfitItemsRow.jsx
-//
-// Extracted after writing the same "row of item thumbnails" markup for the
-// third time (DailyOutfitCard, ChatOutfitCard, now Planner's DayCard) -
-// consolidated into one shared component rather than a fourth copy.
-// Works against Outfit.items[].clothId shape whether populated as a full
-// object or already flattened (both occur across different endpoints:
-// /plans/week populates items.clothId, while /outfits/suggest returns
-// items already flattened onto the outfit object directly).
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';

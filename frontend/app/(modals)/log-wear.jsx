@@ -1,15 +1,3 @@
-// app/(modals)/log-wear.jsx
-//
-// Backed by POST /api/wear-logs (wearLogController.logWear), which accepts
-// { outfitId, occasion, rating, feedback, temperature, condition,
-// recommendationId? }. Reached from Home's "Worn Today" button with
-// outfitId + recommendationId already in hand (see home/index.jsx).
-//
-// Temperature/condition are auto-filled from the real device weather
-// (useWeather) rather than asking the user to type them in manually -
-// consistent with how the rest of the app already treats weather as
-// ambient context, not a form field.
-
 import React, { useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';

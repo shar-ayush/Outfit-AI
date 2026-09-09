@@ -1,11 +1,3 @@
-// src/components/home/TodayPlannedOutfitCard.jsx
-//
-// Shows today's planned outfit on the home screen.
-// If a plan exists for today, displays the outfit items (with working
-// horizontal scroll), occasion tag, status badge, and an Edit in Planner action.
-// If no plan exists, renders an inviting banner prompting the user
-// to plan their look for today.
-
 import React from 'react';
 import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -35,7 +27,6 @@ export default function TodayPlannedOutfitCard({
     );
   }
 
-  // If no outfit is planned for today yet, show an inviting planning prompt card
   if (!plan || !plan.outfitId) {
     return (
       <View style={styles.container}>
@@ -83,11 +74,6 @@ export default function TodayPlannedOutfitCard({
       </View>
 
       <Card noPadding elevated style={styles.card}>
-        {/*
-          IMPORTANT: Do NOT wrap the ScrollView inside an outer Pressable.
-          An outer Pressable intercepts touch responder gestures, preventing
-          horizontal scrolling on both iOS and Android.
-        */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -235,7 +221,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  // Empty state prompt
   emptyPromptCard: {
     flexDirection: 'row',
     alignItems: 'center',

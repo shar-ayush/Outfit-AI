@@ -13,12 +13,6 @@ import {
   getWardrobeStats,
 } from '../services/wardrobeService.js'
 
-// ─────────────────────────────────────────────
-// Upload single clothing item
-// POST /api/wardrobe/upload
-// multipart/form-data: image file + optional metadata
-// ─────────────────────────────────────────────
-
 export const uploadCloth = asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new ApiError(400, 'Image file is required')
@@ -49,12 +43,6 @@ export const uploadCloth = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Bulk upload — up to 20 images at once
-// POST /api/wardrobe/upload/bulk
-// multipart/form-data: images[] array
-// ─────────────────────────────────────────────
-
 export const bulkUploadClothes = asyncHandler(async (req, res) => {
   if (!req.files || req.files.length === 0) {
     throw new ApiError(400, 'At least one image is required')
@@ -72,12 +60,6 @@ export const bulkUploadClothes = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Get wardrobe
-// GET /api/wardrobe
-// Query: category, formality, occasion, season, search, page, limit, sortBy
-// ─────────────────────────────────────────────
-
 export const getWardrobeItems = asyncHandler(async (req, res) => {
   const result = await getWardrobe(req.user._id, req.query)
 
@@ -86,11 +68,6 @@ export const getWardrobeItems = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Get single clothing item
-// GET /api/wardrobe/:clothId
-// ─────────────────────────────────────────────
-
 export const getClothItem = asyncHandler(async (req, res) => {
   const cloth = await getClothById(req.params.clothId, req.user._id)
 
@@ -98,11 +75,6 @@ export const getClothItem = asyncHandler(async (req, res) => {
     new ApiResponse(200, { cloth }, 'Item fetched')
   )
 })
-
-// ─────────────────────────────────────────────
-// Update clothing item
-// PATCH /api/wardrobe/:clothId
-// ─────────────────────────────────────────────
 
 export const updateClothItem = asyncHandler(async (req, res) => {
   const cloth = await updateCloth(
@@ -116,11 +88,6 @@ export const updateClothItem = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Archive clothing item (soft delete)
-// DELETE /api/wardrobe/:clothId
-// ─────────────────────────────────────────────
-
 export const archiveClothItem = asyncHandler(async (req, res) => {
   await archiveCloth(req.params.clothId, req.user._id)
 
@@ -128,11 +95,6 @@ export const archiveClothItem = asyncHandler(async (req, res) => {
     new ApiResponse(200, {}, 'Item archived')
   )
 })
-
-// ─────────────────────────────────────────────
-// Hard delete clothing item
-// DELETE /api/wardrobe/:clothId/permanent
-// ─────────────────────────────────────────────
 
 export const permanentDeleteCloth = asyncHandler(async (req, res) => {
   const result = await deleteCloth(req.params.clothId, req.user._id)
@@ -142,11 +104,6 @@ export const permanentDeleteCloth = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Toggle availability
-// PATCH /api/wardrobe/:clothId/availability
-// ─────────────────────────────────────────────
-
 export const toggleClothAvailability = asyncHandler(async (req, res) => {
   const result = await toggleAvailability(req.params.clothId, req.user._id)
 
@@ -154,11 +111,6 @@ export const toggleClothAvailability = asyncHandler(async (req, res) => {
     new ApiResponse(200, result, `Item marked as ${result.isAvailable ? 'available' : 'unavailable'}`)
   )
 })
-
-// ─────────────────────────────────────────────
-// Get wardrobe stats
-// GET /api/wardrobe/stats
-// ─────────────────────────────────────────────
 
 export const getStats = asyncHandler(async (req, res) => {
   const stats = await getWardrobeStats(req.user._id)

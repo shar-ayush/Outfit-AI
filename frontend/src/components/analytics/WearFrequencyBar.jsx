@@ -1,9 +1,3 @@
-// src/components/analytics/WearFrequencyBar.jsx
-//
-// Backed by GET /api/analytics/wear-frequency's real `mostWorn` array.
-// Bar width is each item's wearCount relative to the max in the list —
-// a real relative comparison, not a fabricated scale.
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Text from '@/components/common/Text';

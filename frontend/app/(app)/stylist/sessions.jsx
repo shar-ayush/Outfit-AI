@@ -1,5 +1,3 @@
-// app/(app)/stylist/sessions.jsx
-
 import React from 'react';
 import { View, FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';

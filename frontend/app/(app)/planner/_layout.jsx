@@ -1,5 +1,3 @@
-// app/(app)/planner/_layout.jsx
-
 import { Stack } from 'expo-router';
 
 export default function PlannerLayout() {

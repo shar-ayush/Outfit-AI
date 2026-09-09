@@ -1,12 +1,3 @@
-// src/components/common/ErrorState.jsx
-//
-// Shown on query errors (TanStack Query `isError`) — network failures,
-// 500s, etc. Distinct from EmptyState (which means "no data", not "failed
-// to load").
-//
-// Usage:
-//   {isError && <ErrorState onRetry={refetch} />}
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

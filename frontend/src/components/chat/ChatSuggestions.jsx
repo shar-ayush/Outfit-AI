@@ -1,5 +1,3 @@
-// src/components/chat/ChatSuggestions.jsx
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import Text from '@/components/common/Text';

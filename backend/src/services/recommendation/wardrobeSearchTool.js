@@ -4,13 +4,6 @@ import mongoose from 'mongoose'
 import { SchemaType } from '@google/generative-ai'
 const DEFAULT_LIMIT = 10
 
-// ─────────────────────────────────────────────
-// Gemini function-calling declaration.
-// This is the schema the LLM sees — it decides when and
-// how to call searchWardrobe based on this description.
-// Wired into the actual chat loop in Step 3.
-// ─────────────────────────────────────────────
-
 export const searchWardrobeDeclaration = {
   name: 'searchWardrobe',
   description:
@@ -96,21 +89,10 @@ async function getMatchingSubCategories(category, subCategory) {
       }
     }
   } catch {
-    // Non-fatal fallback
   }
 
   return Array.from(matches)
 }
-
-// ─────────────────────────────────────────────
-// Core implementation — plain async function, callable
-// directly (for testing) or via the agentic loop (Step 3).
-//
-// Combines Atlas $vectorSearch similarity ranking with
-// metadata pre-filters. Unlike the old vectorSearchWardrobe,
-// vectorScore is preserved on every returned item rather
-// than being dropped after retrieval.
-// ─────────────────────────────────────────────
 
 export async function searchWardrobe(userId, args = {}) {
   const {
@@ -132,9 +114,6 @@ export async function searchWardrobe(userId, args = {}) {
     ? new mongoose.Types.ObjectId(userId)
     : userId
 
-  // Build the Atlas $vectorSearch pre-filter.
-  // Same technique your existing vectorSearchWardrobe already uses
-  // for isAvailable/isArchived — just parameterized further.
   const filter = {
     userId:      { $eq: uid },
     isAvailable: { $eq: true },
@@ -180,7 +159,7 @@ export async function searchWardrobe(userId, args = {}) {
           path:          'embedding',
           queryVector:   queryEmbedding,
           numCandidates: limit * 10,
-          limit:         limit * 2, // over-fetch, then trim after the similarity cutoff below
+          limit:         limit * 2,
           filter,
         },
       },
@@ -199,9 +178,6 @@ export async function searchWardrobe(userId, args = {}) {
       usedFallback: false,
     }
   } catch (error) {
-    // Vector index might be missing/misconfigured — degrade to
-    // metadata-only filtering rather than failing the whole request.
-    // Every item still returned, just without a similarity score.
     console.error('searchWardrobe: vector search failed, falling back to metadata filter:', error.message)
 
     const mongoFilter = {

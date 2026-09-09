@@ -1,5 +1,3 @@
-// app/(auth)/onboarding/_layout.jsx
-
 import { Stack } from 'expo-router';
 
 export default function OnboardingLayout() {
@@ -8,7 +6,7 @@ export default function OnboardingLayout() {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
-        gestureEnabled: false, // linear wizard — no swipe-back skipping steps
+        gestureEnabled: false,
       }}
     />
   );

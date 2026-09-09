@@ -1,14 +1,3 @@
-// src/components/common/SkeletonLoader.jsx
-//
-// Shimmering placeholder block for loading states — wardrobe grid cards,
-// outfit cards, chat outfit cards while generating. Uses Reanimated for
-// a smooth opacity pulse (cheaper than a shimmer gradient sweep, matches
-// the calm/understated Haute Systems aesthetic).
-//
-// Usage:
-//   <SkeletonLoader width="100%" height={200} radius={16} />
-//   <SkeletonCard /> — preset for a ClothCard-shaped placeholder grid item
-
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, {
@@ -44,7 +33,6 @@ export function SkeletonLoader({ width = '100%', height = 16, style, borderRadiu
   );
 }
 
-// Preset — mimics a ClothCard grid item while wardrobe loads
 export function SkeletonCard({ style }) {
   return (
     <View style={[styles.cardContainer, style]}>
@@ -57,7 +45,6 @@ export function SkeletonCard({ style }) {
   );
 }
 
-// Preset — mimics an OutfitCard while a suggestion is being generated
 export function SkeletonOutfitCard({ style }) {
   return (
     <View style={[styles.outfitCardContainer, style]}>

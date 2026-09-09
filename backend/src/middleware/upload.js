@@ -1,7 +1,6 @@
 import multer from 'multer'
 import ApiError from '../utils/ApiError.js'
 
-// Use memory storage — we process the buffer before uploading to Cloudinary
 const storage = multer.memoryStorage()
 
 const fileFilter = (req, file, cb) => {
@@ -16,16 +15,13 @@ const fileFilter = (req, file, cb) => {
 export const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
 })
 
-// Single image upload
 export const uploadSingle = upload.single('image')
 
-// Multiple images — up to 20 for bulk upload
 export const uploadMultiple = upload.array('images', 20)
 
-// Virtual Try-On images — person and apparel
 export const uploadTryOn = upload.fields([
   { name: 'personImage', maxCount: 1 },
   { name: 'apparelImage', maxCount: 1 },

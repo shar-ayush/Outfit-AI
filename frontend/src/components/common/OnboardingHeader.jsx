@@ -1,13 +1,3 @@
-// src/components/common/OnboardingHeader.jsx
-//
-// Unified header used across all 4 onboarding steps. The three Stitch
-// mockups have small header inconsistencies (style_quiz/color_quiz show
-// "outfiT AI" centered; climate_formality shows "Step 3 of 4" text
-// instead) — reconciled here into one consistent chrome: back button,
-// wordmark, spacer, then a progress bar showing step/totalSteps. The
-// "Step X of 4" caption still appears in each screen's own content below,
-// exactly as int he mocks.
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

@@ -5,10 +5,6 @@ import OutfitPlan from '../models/OutfitPlan.js'
 import Outfit from '../models/Outfit.js'
 import { processSignal } from '../services/learning/signalProcessor.js'
 
-// ─────────────────────────────────────────────
-// Timezone-safe date helpers
-// ─────────────────────────────────────────────
-
 function normalizeDateToUTC(dateInput) {
   if (!dateInput) return null
   if (typeof dateInput === 'string') {
@@ -31,12 +27,6 @@ function formatUTCDateToString(date) {
   return `${y}-${m}-${day}`
 }
 
-// ─────────────────────────────────────────────
-// Plan outfit for a date
-// POST /api/plans
-// Body: { outfitId, date, occasion, notes }
-// ─────────────────────────────────────────────
-
 export const createPlan = asyncHandler(async (req, res) => {
   const { outfitId, date, occasion, notes, recommendationId } = req.body
 
@@ -52,7 +42,6 @@ export const createPlan = asyncHandler(async (req, res) => {
   const outfit = await Outfit.findOne({ _id: outfitId, userId: req.user._id })
   if (!outfit) throw new ApiError(404, 'Outfit not found')
 
-  // Search window covers both exact UTC midnight and legacy offset plans within ±12h
   const windowStart = new Date(planDate.getTime() - 12 * 60 * 60 * 1000)
   const windowEnd = new Date(planDate.getTime() + 12 * 60 * 60 * 1000)
 
@@ -69,7 +58,7 @@ export const createPlan = asyncHandler(async (req, res) => {
     existingPlan.status = 'planned'
     existingPlan.occasion = occasion || outfit.occasion
     existingPlan.notes = notes
-    existingPlan.date = planDate // Normalize to exact UTC midnight
+    existingPlan.date = planDate
     plan = await existingPlan.save()
   } else {
     plan = await OutfitPlan.findOneAndUpdate(
@@ -91,12 +80,6 @@ export const createPlan = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Get week plan
-// GET /api/plans/week
-// Query: startDate (defaults to today)
-// ─────────────────────────────────────────────
-
 export const getWeekPlan = asyncHandler(async (req, res) => {
   const startDate = req.query.startDate
     ? normalizeDateToUTC(req.query.startDate)
@@ -104,7 +87,6 @@ export const getWeekPlan = asyncHandler(async (req, res) => {
 
   const endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000 - 1)
 
-  // Query plans within range, with 12h buffer for legacy plans
   const queryStart = new Date(startDate.getTime() - 12 * 60 * 60 * 1000)
   const queryEnd = new Date(endDate.getTime() + 12 * 60 * 60 * 1000)
 
@@ -136,7 +118,6 @@ export const getWeekPlan = asyncHandler(async (req, res) => {
       const pDateStr = formatUTCDateToString(p.date)
       if (pDateStr === dateStr) return true
       const pTime = new Date(p.date).getTime()
-      // Catch legacy offset plans saved within 12 hours before dayStart
       return pTime >= dayStart - 12 * 3600000 && pTime < dayStart
     })
 
@@ -151,12 +132,6 @@ export const getWeekPlan = asyncHandler(async (req, res) => {
     new ApiResponse(200, { week }, 'Week plan fetched')
   )
 })
-
-// ─────────────────────────────────────────────
-// Get plans for a date range
-// GET /api/plans
-// Query: startDate, endDate
-// ─────────────────────────────────────────────
 
 export const getPlans = asyncHandler(async (req, res) => {
   const {
@@ -214,12 +189,6 @@ export const getPlans = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Update plan status
-// PATCH /api/plans/:planId/status
-// Body: { status } — planned | worn | skipped | cancelled
-// ─────────────────────────────────────────────
-
 export const updatePlanStatus = asyncHandler(async (req, res) => {
   const { status, rating, feedback } = req.body
  
@@ -246,7 +215,7 @@ export const updatePlanStatus = asyncHandler(async (req, res) => {
         occasion: plan.occasion,
         dayOfWeek: new Date().getDay(),
       },
-      recommendationId: plan.recommendationId || undefined, // <-- added
+      recommendationId: plan.recommendationId || undefined,
     })
   }
  
@@ -254,11 +223,6 @@ export const updatePlanStatus = asyncHandler(async (req, res) => {
     new ApiResponse(200, { plan }, `Plan marked as ${status}`)
   )
 })
-
-// ─────────────────────────────────────────────
-// Delete plan
-// DELETE /api/plans/:planId
-// ─────────────────────────────────────────────
 
 export const deletePlan = asyncHandler(async (req, res) => {
   const plan = await OutfitPlan.findOneAndDelete({

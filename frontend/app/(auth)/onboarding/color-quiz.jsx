@@ -1,10 +1,3 @@
-// app/(auth)/onboarding/color-quiz.jsx
-//
-// Matches color_quiz_step_2/code.html: circular swatch grid, gold ring +
-// checkmark when selected. Check icon color flips to dark for light
-// swatches (beige, cream) so it stays legible — mirrored from the mock's
-// `text-primary` vs `text-white` check color split.
-
 import React from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

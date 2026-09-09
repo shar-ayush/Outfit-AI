@@ -1,9 +1,3 @@
-// app/(auth)/onboarding/climate-quiz.jsx
-//
-// Matches climate_formality_step_3/code.html: two sections on one
-// scrollable screen — a 2x2 pill grid for climate, then a row of 3 image
-// cards for formality. Both single-select.
-
 import React from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -37,7 +31,6 @@ export default function ClimateQuizScreen() {
           Step 3 of 4
         </Text>
 
-        {/* ── Climate ─────────────────────────────────────── */}
         <Text variant="headlineSm" style={styles.sectionTitle}>
           What's your climate?
         </Text>
@@ -69,7 +62,6 @@ export default function ClimateQuizScreen() {
 
         <Divider style={styles.divider} />
 
-        {/* ── Formality ───────────────────────────────────── */}
         <Text variant="headlineSm" style={styles.sectionTitle}>
           How formal is your day-to-day?
         </Text>

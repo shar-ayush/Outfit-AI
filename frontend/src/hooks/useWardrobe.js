@@ -1,9 +1,3 @@
-// src/hooks/useWardrobe.js
-//
-// TanStack Query wrappers over api/wardrobe.js. The list uses
-// useInfiniteQuery (per plan: "TanStack Query's useInfiniteQuery for
-// wardrobe... Load 20 items per page").
-
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { wardrobeApi } from '@/api';
 import { QUERY_KEYS } from '@/constants/queryKeys';
@@ -37,7 +31,7 @@ export function useUploadCloth() {
   return useMutation({
     mutationFn: ({ asset, extra }) => wardrobeApi.uploadCloth(asset, extra),
     onSuccess: (cloth) => {
-      addItem(cloth); // optimistic local mirror — see wardrobeStore
+      addItem(cloth);
       queryClient.invalidateQueries({ queryKey: ['wardrobe'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.WARDROBE_STATS });
       queryClient.invalidateQueries({ queryKey: ['outfits'] });

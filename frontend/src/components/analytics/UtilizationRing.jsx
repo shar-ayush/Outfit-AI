@@ -1,12 +1,3 @@
-// src/components/analytics/UtilizationRing.jsx
-//
-// Lightweight custom ring using react-native-svg (already a dependency)
-// rather than pulling in victory-native for a single indicator - keeps
-// the dependency footprint minimal for one chart element.
-//
-// Backed by the real `utilizationRate` field from
-// GET /api/analytics/dashboard (analyticsService.getWardrobeUtilization).
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';

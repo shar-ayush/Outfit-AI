@@ -6,12 +6,6 @@ import Outfit from '../models/Outfit.js'
 import { processSignal } from '../services/learning/signalProcessor.js'
 import { getWearHistory } from '../services/analyticsService.js'
 
-// ─────────────────────────────────────────────
-// Log a wear event
-// POST /api/wear-logs
-// Body: { outfitId, occasion, rating?, feedback?, temperature?, condition?, recommendationId? }
-// ─────────────────────────────────────────────
-
 export const logWear = asyncHandler(async (req, res) => {
   const {
     outfitId,
@@ -27,7 +21,6 @@ export const logWear = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'outfitId is required')
   }
 
-  // Verify outfit belongs to user
   const outfit = await Outfit.findOne({
     _id:    outfitId,
     userId: req.user._id,
@@ -36,7 +29,6 @@ export const logWear = asyncHandler(async (req, res) => {
 
   const clothIds = outfit.items.map(i => i.clothId.toString())
 
-  // Build context
   const now = new Date()
   const context = {
     occasion:    occasion || outfit.occasion,
@@ -47,7 +39,6 @@ export const logWear = asyncHandler(async (req, res) => {
     condition:   condition,
   }
 
-  // Create wear log
   const wearLog = await WearLog.create({
     userId:   req.user._id,
     outfitId,
@@ -60,7 +51,6 @@ export const logWear = asyncHandler(async (req, res) => {
     wornAt: now,
   })
 
-  // Trigger learning pipeline — non-blocking
   processSignal({
     userId:    req.user._id,
     outfitId,
@@ -68,7 +58,7 @@ export const logWear = asyncHandler(async (req, res) => {
     rating:    rating ? parseInt(rating) : null,
     feedback,
     context,
-    recommendationId: recommendationId || undefined, // <-- was missing entirely
+    recommendationId: recommendationId || undefined,
   }).catch(err => console.error('Signal processing error:', err.message))
 
   return res.status(201).json(
@@ -76,24 +66,13 @@ export const logWear = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Get wear history
-// GET /api/wear-logs
-// Query: page, limit
-// ─────────────────────────────────────────────
-
 export const getHistory = asyncHandler(async (req, res) => {
-  const result = await getWearHistory(req.user._id, req.query) // req.query already includes clothId if present
+  const result = await getWearHistory(req.user._id, req.query)
  
   return res.json(
     new ApiResponse(200, result, 'Wear history fetched')
   )
 })
-
-// ─────────────────────────────────────────────
-// Get wear log by ID
-// GET /api/wear-logs/:logId
-// ─────────────────────────────────────────────
 
 export const getWearLog = asyncHandler(async (req, res) => {
   const log = await WearLog.findOne({
@@ -117,11 +96,6 @@ export const getWearLog = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Delete wear log
-// DELETE /api/wear-logs/:logId
-// ─────────────────────────────────────────────
-
 export const deleteWearLog = asyncHandler(async (req, res) => {
   const log = await WearLog.findOneAndDelete({
     _id:    req.params.logId,
@@ -134,10 +108,6 @@ export const deleteWearLog = asyncHandler(async (req, res) => {
     new ApiResponse(200, {}, 'Wear log deleted')
   )
 })
-
-// ─────────────────────────────────────────────
-// Helper — get season from month index
-// ─────────────────────────────────────────────
 
 function getSeason(month) {
   if (month >= 2  && month <= 4) return 'spring'

@@ -1,13 +1,3 @@
-// app/(auth)/forgot-password.jsx
-//
-// Backed by the new POST /api/auth/forgot-password (backend fix #5).
-// DEV-MODE NOTE: no email service exists in this backend, so the API
-// response includes `devResetToken` directly. This screen shows it inline
-// with a clearly-labeled "development mode" notice and a button straight
-// to the reset screen - in production, remove `devResetToken` from the
-// API response and this screen would just show a generic "check your
-// email" message instead.
-
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -35,7 +25,7 @@ export default function ForgotPasswordScreen() {
       setSent(true);
       if (result.devResetToken) setDevToken(result.devResetToken);
     } catch {
-      setSent(true); // backend intentionally never reveals whether the email exists
+      setSent(true);
     } finally {
       setIsSubmitting(false);
     }

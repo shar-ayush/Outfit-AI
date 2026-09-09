@@ -16,7 +16,6 @@ const outfitSchema = new mongoose.Schema({
 
   items: [outfitItemSchema],
 
-  // Denormalized context
   occasion:           String,
   formality:          String,
   style:              [String],
@@ -29,31 +28,22 @@ const outfitSchema = new mongoose.Schema({
     required: true,
   },
 
-  // Compatibility scores stored at generation time.
-  // Field names match compatibilityScorer.scoreOutfit()'s ACTUAL return
-  // shape (see Step 4). Previously this stored color/style/formality/
-  // occasion/pattern — fields scoreOutfit() never computed — so
-  // scoreBreakdown was silently empty in the DB for every outfit ever
-  // created. This is that fix.
   compatibilityScore: Number,
   scoreBreakdown: {
-    harmony:          Number, // pairwise color/pattern/style/formality/occasion average, 0-100
-    vectorSimilarity: Number, // 0-1, avg semantic similarity of items to the query
-    constraintMatch:  Number, // 0-1, avg match to the user's explicit slot constraints
+    harmony:          Number,
+    vectorSimilarity: Number,
+    constraintMatch:  Number,
     pairsScored:      Number,
   },
 
-  // AI metadata
   outfitName: String,
   whyItWorks: String,
   stylingTip: String,
   vibe:       String,
 
-  // State
   isSaved:    { type: Boolean, default: false },
   isArchived: { type: Boolean, default: false },
 
-  // Wear tracking
   wearCount:  { type: Number, default: 0 },
   lastWornAt: Date,
 

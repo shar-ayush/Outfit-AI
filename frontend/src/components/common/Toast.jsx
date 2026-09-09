@@ -1,13 +1,3 @@
-// src/components/common/Toast.jsx
-//
-// Presentational toast — purely controlled via props. In Step 4 (stores) we
-// wire a <ToastHost /> at the root layout that reads uiStore.toast and
-// renders this; keeping this component prop-driven means it has no
-// dependency on the store and is easy to test/reuse standalone.
-//
-// Usage (once wired to uiStore):
-//   <Toast visible={toast.visible} message={toast.message} type={toast.type} onHide={hideToast} />
-
 import React, { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {

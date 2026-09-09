@@ -1,8 +1,3 @@
-// app/(auth)/onboarding/style-quiz.jsx
-//
-// Matches style_quiz_step_1/code.html: 2-column grid of full-bleed image
-// cards, gold border + checkmark badge when selected, pinned Continue CTA.
-
 import React from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';

@@ -8,17 +8,6 @@ function outfitKey(outfit) {
   return outfit.items.map(i => i._id.toString()).sort().join('_')
 }
 
-// ─────────────────────────────────────────────
-// Exact-duplicate guard.
-//
-// The old >50%-overlap selectDiverseOutfits rule is retired —
-// it was the direct cause of forced constraint violations
-// (see the compose prompt above for the real diversity logic
-// now). This guard only catches the much narrower case of the
-// LLM selecting the literal same candidate twice, which would
-// show the user two identical outfit cards.
-// ─────────────────────────────────────────────
-
 function dedupeExactOutfits(outfits) {
   const seen   = new Set()
   const result = []
@@ -34,10 +23,6 @@ function dedupeExactOutfits(outfits) {
   return result
 }
 
-// ─────────────────────────────────────────────
-// Full ranking pipeline
-// ─────────────────────────────────────────────
-
 export async function rankCandidates({
   candidatePool,
   userId,
@@ -48,18 +33,14 @@ export async function rankCandidates({
   learningPhase       = 0,
   count               = 3,
 }) {
-  // Step 1 — generate all valid combinations via cartesian product
-  // (now constraint-aware and pre-trimmed per slot — see compatibilityScorer.js)
   const allCombinations = generateCandidates(candidatePool, intent, 500)
 
   if (allCombinations.length === 0) {
     return []
   }
 
-  // Step 2 — fetch user's learned preferences
   const preferences = await fetchUserPreferences(userId)
 
-  // Step 3 — personalization layer (unchanged)
   const personalized = applyPersonalization(
     allCombinations,
     preferences,
@@ -67,14 +48,8 @@ export async function rankCandidates({
     learningPhase
   )
 
-  // Step 4 — novelty penalty (unchanged)
   const withNovelty = await applyNoveltyPenalty(personalized, userId, shownItemIds)
 
-  // Step 5 — composition
-  // Wider pool than the old top15: the composer now handles its own
-  // diversity/substitution reasoning, so it needs enough raw material
-  // to find genuine alternatives for unconstrained slots rather than
-  // relying on a separate post-hoc rejection pass.
   const top20 = withNovelty.slice(0, 20)
 
     const composed = await composeOutfitsFromPool(
@@ -85,10 +60,8 @@ export async function rankCandidates({
     count
   )
 
-  // Step 6 — exact-duplicate safety net
   const deduped = dedupeExactOutfits(composed)
 
-  // Step 7 — independent verification + single retry per outfit
   const verifications = await verifyOutfitConstraints(deduped, intent)
 
   const verified = await Promise.all(
@@ -105,12 +78,9 @@ export async function rankCandidates({
       const replacement = await recomposeSingleOutfit(top20, userQuery, intent, usedItemIds)
 
       if (!replacement) {
-        // Retry itself failed — keep the original outfit, but the
-        // verification record honestly reflects the unresolved violation
         return { ...outfit, verification }
       }
 
-      // Re-verify the replacement exactly once — no further retries beyond this
       const [reVerification] = await verifyOutfitConstraints([replacement], intent)
       return {
         ...replacement,

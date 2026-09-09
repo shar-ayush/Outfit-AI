@@ -1,10 +1,3 @@
-// app/(modals)/try-on.jsx
-//
-// AI Virtual Try-On Studio
-// Allows user to upload a photo of themselves and an outfit / cloth
-// (or pick an existing item directly from their wardrobe),
-// sending them to the API4AI Virtual Try-On deep-learning engine.
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -58,10 +51,8 @@ export default function VirtualTryOnModal() {
   const showToast = useUIStore((s) => s.showToast);
   const { pickFromCamera, pickFromGallery } = useImagePicker();
 
-  // Mode: 'studio' | 'history'
   const [activeTab, setActiveTab] = useState('studio');
 
-  // Input states
   const [personAsset, setPersonAsset] = useState(null);
   const [apparelMode, setApparelMode] = useState('wardrobe');
   const [selectedClothId, setSelectedClothId] = useState(preselectedClothId || null);
@@ -69,19 +60,16 @@ export default function VirtualTryOnModal() {
   const [prompt, setPrompt] = useState('');
   const [showPromptInput, setShowPromptInput] = useState(false);
 
-  // Generation result state
   const [generationResult, setGenerationResult] = useState(null);
-  const [viewMode, setViewMode] = useState('result'); // 'result' | 'original'
+  const [viewMode, setViewMode] = useState('result');
   const [processingStepIndex, setProcessingStepIndex] = useState(0);
 
-  // Queries & Mutations
   const performTryOn = usePerformTryOn();
   const { data: preselectedCloth } = useClothItem(preselectedClothId);
   const { data: wardrobeData, isLoading: isLoadingWardrobe } = useWardrobeList({ limit: 40 });
   const { data: historyData, isLoading: isLoadingHistory } = useTryOnHistory(1, 30);
   const deleteTryOn = useDeleteTryOn();
 
-  // When preselectedCloth arrives from route param
   useEffect(() => {
     if (preselectedClothId) {
       setSelectedClothId(preselectedClothId);
@@ -89,7 +77,6 @@ export default function VirtualTryOnModal() {
     }
   }, [preselectedClothId]);
 
-  // Rotate processing steps while loading
   useEffect(() => {
     let interval;
     if (performTryOn.isPending) {
@@ -101,7 +88,6 @@ export default function VirtualTryOnModal() {
     return () => clearInterval(interval);
   }, [performTryOn.isPending]);
 
-  // Handle Pick Person
   const handlePickPerson = async (source) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const asset = source === 'camera' ? await pickFromCamera() : await pickFromGallery();
@@ -110,7 +96,6 @@ export default function VirtualTryOnModal() {
     }
   };
 
-  // Handle Pick Apparel
   const handlePickApparel = async (source) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const asset = source === 'camera' ? await pickFromCamera() : await pickFromGallery();
@@ -120,7 +105,6 @@ export default function VirtualTryOnModal() {
     }
   };
 
-  // Handle Generate Try-On
   const handleGenerate = () => {
     if (!personAsset) {
       showToast('Please select or take a photo of yourself', 'warning');
@@ -163,7 +147,6 @@ export default function VirtualTryOnModal() {
     );
   };
 
-  // Handle Share Result
   const handleShare = async () => {
     if (!generationResult?.resultImageUrl) return;
     try {
@@ -181,7 +164,6 @@ export default function VirtualTryOnModal() {
     }
   };
 
-  // Handle Delete History Item
   const handleDeleteHistory = (id) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     deleteTryOn.mutate(id, {
@@ -194,13 +176,11 @@ export default function VirtualTryOnModal() {
     });
   };
 
-  // Flatten clothes from wardrobe infinite query or regular array
   const allClothes =
     wardrobeData?.pages?.flatMap((p) => p.clothes) ||
     wardrobeData?.clothes ||
     [];
 
-  // Filter suitable categories for try on (tops, dresses, outerwear, bottoms)
   const tryOnCompatibleClothes = allClothes.filter((c) =>
     ['top', 'bottom', 'outerwear', 'full_body'].includes(c.category)
   );
@@ -211,7 +191,6 @@ export default function VirtualTryOnModal() {
 
   return (
     <Screen edges={['top', 'bottom']} padded={false} backgroundColor={colors.surface}>
-      {/* Header */}
       <View style={styles.header}>
         <Pressable
           style={styles.headerIconButton}
@@ -251,7 +230,6 @@ export default function VirtualTryOnModal() {
         </Pressable>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabRow}>
         <Pressable
           style={[styles.tabButton, activeTab === 'studio' && styles.tabButtonActive]}
@@ -280,9 +258,7 @@ export default function VirtualTryOnModal() {
         </Pressable>
       </View>
 
-      {/* Main Content Area */}
       {activeTab === 'history' ? (
-        /* History View */
         <ScrollView style={styles.flex} contentContainerStyle={styles.historyContainer}>
           {isLoadingHistory ? (
             <LoadingSpinner />
@@ -337,7 +313,6 @@ export default function VirtualTryOnModal() {
           )}
         </ScrollView>
       ) : generationResult && !performTryOn.isPending ? (
-        /* Generation Result View */
         <ScrollView style={styles.flex} contentContainerStyle={styles.resultContainer}>
           <View style={styles.resultCard}>
             <Image
@@ -351,7 +326,6 @@ export default function VirtualTryOnModal() {
               contentFit="cover"
             />
 
-            {/* Toggle Badge */}
             <View style={styles.toggleRow}>
               <Pressable
                 style={[styles.togglePill, viewMode === 'result' && styles.togglePillActive]}
@@ -378,7 +352,6 @@ export default function VirtualTryOnModal() {
             </View>
           </View>
 
-          {/* Reference Garment Pill */}
           {generationResult.apparelImageUrl && (
             <View style={styles.fittedGarmentRow}>
               <Image
@@ -399,7 +372,6 @@ export default function VirtualTryOnModal() {
             </View>
           )}
 
-          {/* Action Row */}
           <View style={styles.resultActions}>
             <Button
               variant="secondary"
@@ -425,9 +397,7 @@ export default function VirtualTryOnModal() {
           </View>
         </ScrollView>
       ) : (
-        /* Studio Configuration View */
         <ScrollView style={styles.flex} contentContainerStyle={styles.studioContainer} showsVerticalScrollIndicator={false}>
-          {/* Loading Overlay when generating */}
           {performTryOn.isPending ? (
             <View style={styles.loadingContainer}>
               <View style={styles.loadingPulseCard}>
@@ -453,7 +423,6 @@ export default function VirtualTryOnModal() {
             </View>
           ) : (
             <>
-              {/* SECTION 1: YOUR PHOTO */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <View style={styles.stepNumberWrap}>
@@ -530,7 +499,6 @@ export default function VirtualTryOnModal() {
                 )}
               </View>
 
-              {/* SECTION 2: THE GARMENT / APPAREL */}
               <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                   <View style={styles.stepNumberWrap}>
@@ -543,7 +511,6 @@ export default function VirtualTryOnModal() {
                   </Text>
                 </View>
 
-                {/* Garment Source Mode Switcher */}
                 <View style={styles.modeSwitchRow}>
                   <Pressable
                     style={[
@@ -587,7 +554,6 @@ export default function VirtualTryOnModal() {
                 </View>
 
                 {apparelMode === 'wardrobe' ? (
-                  /* Wardrobe Picker */
                   <View style={styles.wardrobePickerSection}>
                     {selectedCloth && (
                       <View style={styles.selectedClothBanner}>
@@ -659,7 +625,6 @@ export default function VirtualTryOnModal() {
                     )}
                   </View>
                 ) : (
-                  /* Custom Garment Upload */
                   <View>
                     {apparelAsset ? (
                       <View style={styles.photoPreviewCard}>
@@ -724,7 +689,6 @@ export default function VirtualTryOnModal() {
                 )}
               </View>
 
-              {/* SECTION 3: OPTIONAL PROMPT / STYLE TWEAKS */}
               <View style={styles.section}>
                 <Pressable
                   style={styles.accordionHeader}
@@ -776,7 +740,6 @@ export default function VirtualTryOnModal() {
                 )}
               </View>
 
-              {/* GENERATE CTA BUTTON */}
               <View style={styles.ctaWrap}>
                 <Button
                   variant="primary"

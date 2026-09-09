@@ -1,20 +1,12 @@
 import Recommendation from '../../models/Recommendation.js'
 import Outfit from '../../models/Outfit.js'
 
-const RECENCY_WINDOW_DAYS = 7 // Recency window for past recommendations
-const MAX_NOVELTY_PENALTY = 0.4 // Max penalty for repeatedly suggested items
-
-// ─────────────────────────────────────────────
-// Penalize candidates that contain items shown
-// repeatedly in the active session or recent recs.
-// NOTE: Recently worn items (WearLog) are NOT
-// penalized so user staples remain accessible.
-// ─────────────────────────────────────────────
+const RECENCY_WINDOW_DAYS = 7
+const MAX_NOVELTY_PENALTY = 0.4
 
 export async function applyNoveltyPenalty(candidates, userId, shownItemIds = []) {
   const cutoff = new Date(Date.now() - RECENCY_WINDOW_DAYS * 24 * 60 * 60 * 1000)
 
-  // Fetch recently recommended item IDs
   const recentRecs = await Recommendation.find({
     userId,
     createdAt: { $gte: cutoff },
@@ -22,7 +14,6 @@ export async function applyNoveltyPenalty(candidates, userId, shownItemIds = [])
     .populate({ path: 'outfitId', select: 'items' })
     .lean()
 
-  // Build recency maps — more recent = higher score = bigger penalty
   const recMap = {}
 
   for (const rec of recentRecs) {
@@ -34,7 +25,6 @@ export async function applyNoveltyPenalty(candidates, userId, shownItemIds = [])
     }
   }
 
-  // Include items shown in current session to prevent repetitive suggestions in same chat/refresh
   for (const id of shownItemIds) {
     recMap[id] = Math.max(recMap[id] || 0, 0.8)
   }

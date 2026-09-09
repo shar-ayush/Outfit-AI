@@ -1,9 +1,3 @@
-// src/components/common/index.js
-//
-// Barrel export — lets other files do:
-//   import { Button, Card, Text, Screen } from '@/components/common';
-// instead of importing each file individually.
-
 export { default as Text } from './Text';
 export { default as Screen } from './Screen';
 export { default as Button } from './Button';

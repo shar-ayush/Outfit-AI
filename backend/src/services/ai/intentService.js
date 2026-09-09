@@ -17,7 +17,6 @@ function validateSlotConstraint(raw) {
   const subCategory = typeof raw.subCategory === 'string' ? raw.subCategory.toLowerCase().trim() : null
   const pattern     = typeof raw.pattern === 'string' ? raw.pattern.toLowerCase().trim() : null
 
-  // A slot constraint with nothing set is the same as no constraint — return null
   if (!color && !subCategory && !pattern) return null
 
   return { color, subCategory, pattern }
@@ -55,7 +54,7 @@ function validateIntent(raw) {
   return {
     messageType: VALID.messageType.includes(raw.messageType)
       ? raw.messageType
-      : 'outfit_request', // default — safer to over-trigger outfit generation than under-trigger it
+      : 'outfit_request',
 
     occasions: VALID.occasions.includes(raw.occasions)
       ? raw.occasions
@@ -89,15 +88,6 @@ function validateIntent(raw) {
     refinementInstruction: raw.refinementInstruction || null,
   }
 }
-
-// ─────────────────────────────────────────────
-// Extract structured intent + route the message
-// Conversation history allows follow-up queries to inherit context
-// e.g. "make it more casual" correctly inherits previous occasion
-// This single call now ALSO decides: is this an outfit request
-// or a general fashion question? (replaces the old keyword-based
-// classifyMessage() in stylistService.js)
-// ─────────────────────────────────────────────
 
 export async function extractIntent(userMessage, conversationHistory = []) {
   const model = getStructuredModel()
@@ -205,8 +195,6 @@ Examples:
     const raw    = JSON.parse(result.response.text())
     return validateIntent(raw)
   } catch {
-    // Safe fallback — default to outfit_request so the pipeline still
-    // attempts a recommendation rather than silently doing nothing
     return {
       messageType:        'outfit_request',
       occasions:          null,

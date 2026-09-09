@@ -1,17 +1,3 @@
-// src/constants/categories.js
-//
-// Static option lists used across onboarding, wardrobe filters, and item
-// editing. Values are chosen to match backend enums exactly — see
-// backend/src/services/ai/geminiService.js's extraction prompt and
-// backend/src/models/Cloth.js for the authoritative enum lists.
-
-// ─────────────────────────────────────────────
-// Onboarding — Style Quiz (step 1)
-// Values match Cloth.style enum exactly.
-// Images are the exact editorial photos from style_quiz_step_1 —
-// swap for your own bundled assets before shipping.
-// ─────────────────────────────────────────────
-
 export const STYLE_OPTIONS = [
   {
     value: 'minimal',
@@ -51,15 +37,6 @@ export const STYLE_OPTIONS = [
   },
 ];
 
-// ─────────────────────────────────────────────
-// Onboarding — Color Quiz (step 2)
-// `value` maps to the exact color-name vocabulary Gemini uses for
-// Cloth.color.primary (see geminiService.js extraction prompt) and the
-// COLOR_HARMONY matrix keys in compatibilityScorer.js — this alignment
-// matters because these seed ContextPreference.colorFrequency, which is
-// matched against item colors during scoring.
-// ─────────────────────────────────────────────
-
 export const COLOR_OPTIONS = [
   { value: 'black', label: 'Noir', hex: '#1A1A1A' },
   { value: 'grey', label: 'Charcoal', hex: '#36454F' },
@@ -69,10 +46,6 @@ export const COLOR_OPTIONS = [
   { value: 'burgundy', label: 'Burgundy', hex: '#800020' },
   { value: 'cream', label: 'Cream', hex: '#FFFDD0' },
 ];
-
-// ─────────────────────────────────────────────
-// Onboarding — Climate + Formality (step 3)
-// ─────────────────────────────────────────────
 
 export const CLIMATE_OPTIONS = [
   { value: 'hot', label: 'Hot', icon: 'weather-sunny' },
@@ -102,11 +75,6 @@ export const FORMALITY_OPTIONS = [
   },
 ];
 
-// ─────────────────────────────────────────────
-// Wardrobe filters — used by ClothFilter, wardrobe grid filter bar
-// (built in the Wardrobe step). Category values match Cloth.category enum.
-// ─────────────────────────────────────────────
-
 export const CLOTH_CATEGORIES = [
   { value: null, label: 'All' },
   { value: 'top', label: 'Tops' },
@@ -131,15 +99,6 @@ export const OCCASIONS = [
 
 export const SEASONS = ['summer', 'winter', 'spring', 'autumn'];
 
-// ─────────────────────────────────────────────
-// Shared color-name -> hex fallback map. Cloth.color.hex is optional on
-// the backend (Gemini extraction doesn't always populate it) — most items
-// only have `color.primary` as a name string ("navy", "olive", etc). This
-// map lets any screen render a color swatch/dot from just the name.
-// Previously duplicated inline in ClothCard.jsx — consolidated here so
-// preferences.jsx (Step 10) doesn't need a third copy.
-// ─────────────────────────────────────────────
-
 export const COLOR_HEX_MAP = {
   black: '#1A1A1A', white: '#FFFFFF', navy: '#000080', blue: '#2B6CB0', beige: '#F5F5DC',
   olive: '#808000', red: '#B22222', pink: '#FFC0CB', grey: '#808080', gray: '#808080',
@@ -151,10 +110,6 @@ export const COLOR_HEX_MAP = {
   lavender: '#E6E6FA', cyan: '#00FFFF', magenta: '#FF00FF',
 };
 
-/**
- * Resolve the most accurate hex code for a garment.
- * Prioritizes exact hex from backend AI, falls back to COLOR_HEX_MAP by color name or family.
- */
 export function getClothColorHex(color, defaultFallback = '#E8E8E8') {
   if (!color) return defaultFallback;
   if (color.hex && typeof color.hex === 'string' && /^#[0-9A-Fa-f]{3,8}$/.test(color.hex.trim())) {
@@ -170,5 +125,4 @@ export function getClothColorHex(color, defaultFallback = '#E8E8E8') {
   }
   return defaultFallback;
 }
-
 

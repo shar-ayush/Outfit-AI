@@ -1,19 +1,3 @@
-// src/components/common/BottomSheet.jsx
-//
-// Lightweight bottom sheet built on RN's Modal + Reanimated slide-up —
-// no external bottom-sheet library needed for this app's use cases
-// (upload FAB picker, ClothFilter, OutfitPicker, sort menus).
-//
-// For scrollable content inside, wrap children in a ScrollView yourself —
-// this component just provides the sheet chrome (handle, backdrop, safe
-// area, slide animation).
-//
-// Usage:
-//   <BottomSheet visible={open} onClose={() => setOpen(false)} title="Add Item">
-//     <SheetOption icon="camera" label="Add Single Item" onPress={...} />
-//     <SheetOption icon="image-multiple" label="Add Multiple Items" onPress={...} />
-//   </BottomSheet>
-
 import React, { useEffect } from 'react';
 import { Modal, Pressable, View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,7 +55,6 @@ export default function BottomSheet({ visible, onClose, title, children }) {
   );
 }
 
-// Common row pattern used inside sheets (upload picker, action menus)
 export function SheetOption({ icon, label, onPress, destructive = false }) {
   return (
     <Pressable

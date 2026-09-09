@@ -1,23 +1,3 @@
-// src/components/chat/ScoreBreakdown.jsx
-//
-// BACKEND-GROUNDED: this is not decorative. The recommendation pipeline
-// (compatibilityScorer -> personalizationService -> noveltyService ->
-// rankingService) produces a real score object on every outfit:
-//   { total, algorithm, personalization, noveltyPenalty, pairsScored }
-// See backend/src/services/recommendation/*.js. This component is the one
-// place in the app that makes that pipeline visible instead of collapsing
-// it into a single opaque number.
-//
-// `algorithm`       - the compatibility score (color/pattern/style/formality/
-//                      occasion matching) BEFORE personalization is blended in.
-// `personalization` - how well this matches the user's learned preferences
-//                      (ItemPreference/PairPreference/ContextPreference).
-// `noveltyPenalty`  - % the score was reduced for containing recently-shown
-//                      or recently-worn items. We invert it to "Freshness"
-//                      for display since a bigger number reading as "better"
-//                      is more intuitive than a bigger number reading as
-//                      "more penalized."
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Text from '@/components/common/Text';

@@ -2,24 +2,12 @@ import { getStructuredModel } from '../../config/gemini.js'
 
 export const MAX_RETRIES_PER_OUTFIT = 1
 
-// ─────────────────────────────────────────────
-// Independent constraint auditor.
-//
-// Deliberately does NOT trust whyItWorks/substitutionNote
-// from the composition step — those are the same LLM call's
-// own self-report, which could be wrong or hallucinated. This
-// re-checks raw item attributes against the original constraints
-// from scratch, as a genuinely separate pass.
-// ─────────────────────────────────────────────
-
 export async function verifyOutfitConstraints(outfits, intent) {
   const slotConstraints    = intent?.slotConstraints || {}
   const excludeConstraints = intent?.excludeConstraints || []
 
   const hasConstraints = Object.keys(slotConstraints).length > 0 || excludeConstraints.length > 0
 
-  // Nothing was ever asked for — every outfit trivially passes.
-  // Skips a wasted Gemini call for the common vague-query case.
   if (!hasConstraints) {
     return outfits.map((_, i) => ({
       outfitIndex: i, satisfied: true, violations: [], justification: null,
@@ -88,9 +76,6 @@ Return ONLY a JSON array, one object per outfit, in outfitIndex order:
     return parsed
   } catch (error) {
     console.error('verifyOutfitConstraints failed, failing open:', error.message)
-    // Fail-open by design: if the audit itself breaks, the user should
-    // still get their outfits rather than the whole request failing.
-    // The note makes it clear in the trail that this wasn't actually checked.
     return outfits.map((_, i) => ({
       outfitIndex: i, satisfied: true, violations: [],
       justification: 'Verification step unavailable — not independently checked.',

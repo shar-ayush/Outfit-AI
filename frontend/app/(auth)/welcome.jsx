@@ -1,8 +1,3 @@
-// app/(auth)/welcome.jsx
-//
-// Minimal, editorial welcome screen matching Haute Systems design language.
-// Clean typography, understated prestige badge, and clear calls to action.
-
 import React from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -24,10 +19,8 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.content}>
-        {/* Top spacer */}
         <View style={styles.topSpacer} />
 
-        {/* Center Editorial Brand Section */}
         <View style={styles.brandSection}>
           <View style={styles.iconEmblem}>
             <MaterialCommunityIcons name="hanger" size={32} color={colors.primary} />
@@ -42,7 +35,6 @@ export default function WelcomeScreen() {
             Your wardrobe, curated and styled with intelligence.
           </Text>
 
-          {/* Minimal Feature Highlights */}
           <View style={styles.highlightsWrap}>
             {HIGHLIGHTS.map((item) => (
               <View key={item.label} style={styles.highlightPill}>
@@ -59,7 +51,6 @@ export default function WelcomeScreen() {
           </View>
         </View>
 
-        {/* Bottom Actions */}
         <View style={styles.bottomSection}>
           <View style={styles.actions}>
             <Button onPress={() => router.push('/(auth)/register')} size="lg">

@@ -1,7 +1,3 @@
-// src/hooks/useTryOn.js
-//
-// React Query wrappers for Virtual Try-On API calls
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tryOnApi } from '@/api';
 import { QUERY_KEYS } from '@/constants/queryKeys';

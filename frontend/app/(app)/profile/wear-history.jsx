@@ -1,10 +1,3 @@
-// app/(app)/profile/wear-history.jsx
-//
-// Backed by GET /api/wear-logs (paginated). Grouped by month client-side
-// since the backend returns a flat, date-sorted list (no grouping param).
-// Uses SectionList's built-in sticky headers rather than a manual
-// scroll-position calculation.
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { View, Pressable, SectionList, RefreshControl, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';

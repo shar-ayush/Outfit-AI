@@ -1,7 +1,3 @@
-// ─────────────────────────────────────────────
-// Core compatibility rules (unchanged)
-// ─────────────────────────────────────────────
-
 const COLOR_HARMONY = {
   white:      { pairs: ['black','navy','beige','grey','brown','olive','burgundy','any'], neutral: true },
   black:      { pairs: ['white','grey','beige','cream','red','pink','any'], neutral: true },
@@ -49,14 +45,6 @@ const STYLE_ACCEPTABLE_MIX = [
   ['preppy',  'casual'],
 ]
 
-// ─────────────────────────────────────────────
-// NEW — weights for blending harmony with the
-// query-relevance signals (vector similarity,
-// constraint match) into the final outfit score.
-// Harmony still dominates — these are corrective
-// signals, not a replacement for aesthetic scoring.
-// ─────────────────────────────────────────────
-
 const FINAL_SCORE_WEIGHTS = {
   harmony:          0.55,
   vectorSimilarity: 0.25,
@@ -69,10 +57,6 @@ const TRIM_SCORE_WEIGHTS = {
 }
 
 const DEFAULT_TRIM_LIMIT = 8
-
-// ─────────────────────────────────────────────
-// Pair scoring helpers (unchanged)
-// ─────────────────────────────────────────────
 
 function getColorScore(c1, c2) {
   if (!c1 || !c2) return 55
@@ -121,10 +105,6 @@ function getOccasionScore(occasions1 = [], occasions2 = [], target) {
   return ((has1 + has2) / 2) * 100
 }
 
-// ─────────────────────────────────────────────
-// Score a pair of items (unchanged)
-// ─────────────────────────────────────────────
-
 export function scoreItemPair(itemA, itemB, targetOccasion) {
   const color    = getColorScore(itemA.color?.primary, itemB.color?.primary)
   const pattern  = getPatternScore(itemA.pattern, itemB.pattern)
@@ -140,15 +120,6 @@ export function scoreItemPair(itemA, itemB, targetOccasion) {
     occasion  * 0.10
   )
 }
-
-// ─────────────────────────────────────────────
-// NEW — how well a single item matches the slot
-// constraint the user explicitly asked for.
-// Returns 0.0 to 1.0. Neutral (0.5) when no
-// constraint was given for this slot at all —
-// this is intentional: an unconstrained slot
-// should never be penalized or rewarded by this term.
-// ─────────────────────────────────────────────
 
 export function computeConstraintMatchScore(item, slotConstraint) {
   if (!slotConstraint || (!slotConstraint.color && !slotConstraint.subCategory && !slotConstraint.pattern)) {
@@ -169,14 +140,14 @@ export function computeConstraintMatchScore(item, slotConstraint) {
       (itemFamily && itemFamily === wantColor) ||
       (itemColor && (itemColor.includes(wantColor) || wantColor.includes(itemColor)))
     ) {
-      checks.push(0.95) // direct match via family or shade (e.g. 'light pink' for 'pink', or 'pink' for 'light pink')
+      checks.push(0.95)
     } else if (
       (wantFamily && itemFamily === wantFamily) ||
       (wantFamily && itemColor.includes(wantFamily))
     ) {
-      checks.push(0.7) // same family relaxed search
+      checks.push(0.7)
     } else {
-      checks.push(0.15) // present in the pool despite not matching — likely a forced-floor/fallback item
+      checks.push(0.15)
     }
   }
 
@@ -197,28 +168,9 @@ export function computeConstraintMatchScore(item, slotConstraint) {
   return checks.reduce((sum, v) => sum + v, 0) / checks.length
 }
 
-// ─────────────────────────────────────────────
-// NEW — normalizes an item's retrieval-time
-// vectorScore into the 0-1 range this module
-// works in. Items with no vectorScore (fixed-
-// filter fallback path, or forced-floor items
-// that used metadata-only fallback) default to
-// a neutral 0.5 rather than being penalized for
-// simply lacking the field.
-// ─────────────────────────────────────────────
-
 export function computeVectorScoreComponent(item) {
   return typeof item.vectorScore === 'number' ? item.vectorScore : 0.5
 }
-
-// ─────────────────────────────────────────────
-// NEW — trims a slot's candidate pool down to the
-// best `limit` items using vectorScore + constraint
-// match only (harmony is pairwise and doesn't apply
-// to a single item, so it's intentionally excluded here).
-// This runs BEFORE the cartesian product so generateCandidates
-// works from a small, high-quality pool per slot.
-// ─────────────────────────────────────────────
 
 export function trimPoolBySlot(items, slotConstraint, limit = DEFAULT_TRIM_LIMIT) {
   if (!Array.isArray(items) || items.length <= limit) return items
@@ -248,16 +200,6 @@ function trimCandidatePool(candidatePool, slotConstraints = {}) {
   }
   return trimmed
 }
-
-// ─────────────────────────────────────────────
-// Score a full outfit — pairwise harmony average,
-// now blended with the outfit's average vector
-// similarity and average constraint match.
-//
-// slotConstraints is keyed by category (top/bottom/
-// footwear/outerwear) — each item's own `.category`
-// field is used to look up its relevant constraint.
-// ─────────────────────────────────────────────
 
 export function scoreOutfit(items, targetOccasion, slotConstraints = {}) {
   if (items.length < 2) {
@@ -295,13 +237,6 @@ export function scoreOutfit(items, targetOccasion, slotConstraints = {}) {
     pairsScored:      pairScores.length,
   }
 }
-
-// ─────────────────────────────────────────────
-// Generate outfit candidates via cartesian product.
-// CHANGED: now accepts `intent` instead of just
-// `targetOccasion`, so slotConstraints can be read
-// and used both for pool trimming and for scoring.
-// ─────────────────────────────────────────────
 
 export function generateCandidates(candidatePool, intent = {}, maxCandidates = 500) {
   const targetOccasion  = intent?.occasions || null
@@ -351,17 +286,6 @@ function collectCombinations(slots, depth, current, results, cap, targetOccasion
   }
 }
 
-// ─────────────────────────────────────────────
-// Diversity enforcement (unchanged for now).
-// NOTE: this is the >50%-overlap rule that caused
-// the original skirt→trousers bug. It is intentionally
-// left as-is here — Step 5 (composition) replaces this
-// entirely with slot-aware, constraint-respecting
-// diversity logic. Do not treat this as fixed yet.
-// ─────────────────────────────────────────────
-
-
-// NOTE - This function selectDiverseOutfits is not used now - it was in old approach
 export function selectDiverseOutfits(sortedCandidates, count = 5) {
   const selected  = []
   const usedIds   = new Set()

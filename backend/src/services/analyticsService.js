@@ -4,11 +4,6 @@ import Outfit from '../models/Outfit.js'
 import ItemPreference from '../models/ItemPreference.js'
 import mongoose from 'mongoose'
 
-// ─────────────────────────────────────────────
-// Cost per wear analytics
-// The ROI dashboard feature
-// ─────────────────────────────────────────────
-
 export async function getCostPerWearAnalytics(userId) {
   const uid = new mongoose.Types.ObjectId(userId)
 
@@ -25,14 +20,14 @@ export async function getCostPerWearAnalytics(userId) {
     ...item,
     costPerWear: item.wearCount > 0
       ? parseFloat((item.purchasePrice / item.wearCount).toFixed(2))
-      : item.purchasePrice, // never worn = full price per wear
+      : item.purchasePrice,
     wearCount: item.wearCount || 0,
   }))
 
   return {
     items:      withCPW,
-    bestValue:  withCPW.slice(0, 5),   // lowest cost per wear
-    worstValue: withCPW.slice(-5).reverse(), // highest cost per wear
+    bestValue:  withCPW.slice(0, 5),
+    worstValue: withCPW.slice(-5).reverse(),
     summary: {
       totalItems:         items.length,
       avgCostPerWear:     items.length > 0
@@ -45,29 +40,22 @@ export async function getCostPerWearAnalytics(userId) {
   }
 }
 
-// ─────────────────────────────────────────────
-// Most and least worn items
-// ─────────────────────────────────────────────
-
 export async function getWearFrequency(userId, limit = 10) {
   const uid = new mongoose.Types.ObjectId(userId)
 
   const [mostWorn, leastWorn, neverWorn] = await Promise.all([
-    // Most worn
     Cloth.find({ userId: uid, isArchived: false, wearCount: { $gt: 0 } })
       .select('name subCategory category color wearCount lastWornAt imageUrl')
       .sort({ wearCount: -1 })
       .limit(limit)
       .lean(),
 
-    // Least worn (but at least once)
     Cloth.find({ userId: uid, isArchived: false, wearCount: { $gt: 0 } })
       .select('name subCategory category color wearCount lastWornAt imageUrl')
       .sort({ wearCount: 1 })
       .limit(limit)
       .lean(),
 
-    // Never worn
     Cloth.find({ userId: uid, isArchived: false, wearCount: 0 })
       .select('name subCategory category color createdAt imageUrl')
       .sort({ createdAt: -1 })
@@ -76,11 +64,6 @@ export async function getWearFrequency(userId, limit = 10) {
 
   return { mostWorn, leastWorn, neverWorn }
 }
-
-// ─────────────────────────────────────────────
-// Sleeping items — haven't been worn in 60+ days
-// but exist in wardrobe (the "unworn 80%")
-// ─────────────────────────────────────────────
 
 export async function getSleepingItems(userId) {
   const uid       = new mongoose.Types.ObjectId(userId)
@@ -106,11 +89,6 @@ export async function getSleepingItems(userId) {
       : null,
   }
 }
-
-// ─────────────────────────────────────────────
-// Overall wardrobe utilization
-// What % of wardrobe is actively used
-// ─────────────────────────────────────────────
 
 export async function getWardrobeUtilization(userId) {
   const uid = new mongoose.Types.ObjectId(userId)
@@ -149,16 +127,12 @@ export async function getWardrobeUtilization(userId) {
   }
 }
 
-// ─────────────────────────────────────────────
-// Wear log history with context
-// ─────────────────────────────────────────────
-
 export async function getWearHistory(userId, { page = 1, limit = 20, clothId } = {}) {
   const skip = (parseInt(page) - 1) * parseInt(limit)
  
   const filter = { userId }
   if (clothId) {
-    filter['items.clothId'] = clothId // matches wear logs that include this item
+    filter['items.clothId'] = clothId
   }
  
   const [logs, total] = await Promise.all([
@@ -187,11 +161,6 @@ export async function getWearHistory(userId, { page = 1, limit = 20, clothId } =
     },
   }
 }
-
-// ─────────────────────────────────────────────
-// Full dashboard summary — single call for
-// everything the analytics screen needs
-// ─────────────────────────────────────────────
 
 export async function getDashboardSummary(userId) {
   const [utilization, sleeping, wearFreq, cpw] = await Promise.all([

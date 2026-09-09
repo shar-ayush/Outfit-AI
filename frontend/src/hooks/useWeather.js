@@ -1,11 +1,3 @@
-// src/hooks/useWeather.js
-//
-// Requests foreground location permission, gets a one-shot position, then
-// fetches current weather. Wrapped in useQuery purely for its loading/error
-// state ergonomics and caching (avoids re-fetching on every Home re-render);
-// the actual "freshness" of weather matters less than not hammering the
-// device GPS repeatedly, so staleTime is generous (10 min).
-
 import { useQuery } from '@tanstack/react-query';
 import * as Location from 'expo-location';
 import { fetchWeatherByCoords } from '@/utils/weatherUtils';
@@ -17,7 +9,7 @@ async function getWeatherForCurrentLocation() {
   }
 
   const position = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Low, // weather doesn't need precise GPS
+    accuracy: Location.Accuracy.Low,
   });
 
   return fetchWeatherByCoords(position.coords.latitude, position.coords.longitude);

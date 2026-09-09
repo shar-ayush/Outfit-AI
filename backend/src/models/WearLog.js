@@ -8,10 +8,8 @@ const wearLogSchema = new mongoose.Schema({
   userId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   outfitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Outfit', required: true },
 
-  // Individual items — for item-level preference updates
   items: [wearLogItemSchema],
 
-  // Context at time of wearing
   context: {
     occasion:    String,
     formality:   String,

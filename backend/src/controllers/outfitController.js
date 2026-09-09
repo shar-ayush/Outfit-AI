@@ -12,12 +12,6 @@ import {
   refreshDailyRecommendation,
 } from '../services/outfitService.js'
 
-// ─────────────────────────────────────────────
-// Get outfit recommendations
-// POST /api/outfits/suggest
-// Body: { query, sessionId?, count?, location? }
-// ─────────────────────────────────────────────
-
 export const suggestOutfits = asyncHandler(async (req, res) => {
   const {
     query,
@@ -34,7 +28,7 @@ export const suggestOutfits = asyncHandler(async (req, res) => {
     userId:   req.user._id,
     query:    query.trim(),
     sessionId,
-    count:    Math.min(parseInt(count) || 3, 5), // cap at 5
+    count:    Math.min(parseInt(count) || 3, 5),
     weatherContext,
   })
 
@@ -42,13 +36,6 @@ export const suggestOutfits = asyncHandler(async (req, res) => {
     new ApiResponse(200, result, 'Outfits generated')
   )
 })
-
-// ─────────────────────────────────────────────
-// Record action on an outfit
-// POST /api/outfits/:outfitId/action
-// Body: { action, recommendationId?, rating?, feedback?, context? }
-// action: worn | saved | rejected | skipped | shared | rated
-// ─────────────────────────────────────────────
 
 export const outfitAction = asyncHandler(async (req, res) => {
   const {
@@ -83,12 +70,6 @@ export const outfitAction = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Get saved outfits
-// GET /api/outfits/saved
-// Query: page, limit
-// ─────────────────────────────────────────────
-
 export const getSaved = asyncHandler(async (req, res) => {
   const result = await getSavedOutfits(req.user._id, req.query)
 
@@ -97,11 +78,6 @@ export const getSaved = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Get single outfit
-// GET /api/outfits/:outfitId
-// ─────────────────────────────────────────────
-
 export const getOutfit = asyncHandler(async (req, res) => {
   const outfit = await getOutfitById(req.params.outfitId, req.user._id)
 
@@ -109,11 +85,6 @@ export const getOutfit = asyncHandler(async (req, res) => {
     new ApiResponse(200, { outfit }, 'Outfit fetched')
   )
 })
-
-// ─────────────────────────────────────────────
-// Delete outfit
-// DELETE /api/outfits/:outfitId
-// ─────────────────────────────────────────────
 
 export const removeOutfit = asyncHandler(async (req, res) => {
   const permanent = req.query.permanent === 'true'
@@ -140,12 +111,6 @@ export const getOutfitRecommendation = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Create custom outfit
-// POST /api/outfits
-// Body: { items: [{ clothId, role }], outfitName?, occasion?, formality?, isSaved? }
-// ─────────────────────────────────────────────
-
 export const createOutfit = asyncHandler(async (req, res) => {
   const { items, outfitName, occasion, formality, isSaved } = req.body
 
@@ -165,11 +130,6 @@ export const createOutfit = asyncHandler(async (req, res) => {
     new ApiResponse(201, { outfit }, 'Outfit created successfully')
   )
 })
-
-// ─────────────────────────────────────────────
-// Get or create today's daily recommendation
-// GET /api/outfits/daily?date=YYYY-MM-DD&temperature=...&condition=...
-// ─────────────────────────────────────────────
 
 export const getDailyOutfit = asyncHandler(async (req, res) => {
   const { date, temperature, condition } = req.query
@@ -193,12 +153,6 @@ export const getDailyOutfit = asyncHandler(async (req, res) => {
     new ApiResponse(200, result, 'Daily recommendation retrieved')
   )
 })
-
-// ─────────────────────────────────────────────
-// Refresh today's daily recommendation
-// POST /api/outfits/daily/refresh
-// Body: { date, weatherContext }
-// ─────────────────────────────────────────────
 
 export const refreshDailyOutfit = asyncHandler(async (req, res) => {
   const { date, weatherContext, reason } = req.body

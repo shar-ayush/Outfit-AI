@@ -1,14 +1,3 @@
-// app/(app)/_layout.jsx
-//
-// Bottom tab navigator for the main app — matches home_dashboard's
-// BottomNavBar exactly: 5 tabs (Home, Wardrobe, Stylist, Planner, Profile),
-// active tab gets a pill-shaped surface-container background behind the
-// icon, inactive tabs are plain secondary-colored icons.
-//
-// Also acts as an auth guard: if somehow reached without a valid session
-// (e.g. a stale deep link), redirect to welcome rather than rendering a
-// broken authenticated shell.
-
 import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
@@ -18,7 +7,7 @@ import { colors, radius } from '@/theme';
 
 const TAB_ICONS = {
   home: { active: 'home', inactive: 'home-outline' },
-  wardrobe: { active: 'hanger', inactive: 'hanger' }, // MCI has one "hanger" glyph, no outline variant
+  wardrobe: { active: 'hanger', inactive: 'hanger' },
   stylist: { active: 'creation', inactive: 'creation' },
   planner: { active: 'calendar-month', inactive: 'calendar-month-outline' },
   profile: { active: 'account', inactive: 'account-outline' },

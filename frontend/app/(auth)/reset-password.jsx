@@ -1,9 +1,3 @@
-// app/(auth)/reset-password.jsx
-//
-// Backed by POST /api/auth/reset-password. Reached either from
-// forgot-password.jsx's dev-mode "Continue to Reset" button, or (in a real
-// production setup) from a deep link in the emailed reset link.
-
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';

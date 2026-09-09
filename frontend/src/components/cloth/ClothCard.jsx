@@ -1,21 +1,3 @@
-// src/components/cloth/ClothCard.jsx
-//
-// Matches wardrobe_grid's card: contained (not cropped) image on a light
-// surface-container-low panel, category label + color dot row below, wear
-// count with an icon.
-//
-// GRID LAYOUT NOTE: the mock uses a true CSS masonry grid (`columns-2`)
-// with variable card heights per image aspect ratio. React Native has no
-// native masonry primitive, and FlashList (chosen for wardrobe's 200+ item
-// performance per the plan) requires uniform row heights to virtualize
-// correctly. We use a fixed 3:4 aspect ratio for every card instead — a
-// deliberate, common RN simplification, not an oversight.
-//
-// REMOVED FROM THE MOCK: a gold "New" badge for recently-uploaded items.
-// The backend has no `isNew` concept — it was a client-side guess
-// (createdAt < 48h) dressed up as a system statement. Backend-grounded UI
-// only shows what the data actually supports.
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -35,7 +17,6 @@ const CATEGORY_LABELS = {
 
 export default function ClothCard({ cloth, onPress }) {
   const colorHex = getClothColorHex(cloth.color, colors.surfaceContainerHigh);
-
 
   return (
     <Pressable onPress={onPress} style={[styles.card, shadows.xs]}>

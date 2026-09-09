@@ -8,12 +8,10 @@ const clothSchema = new mongoose.Schema({
     index:    true,
   },
 
-  // Images
   imageUrl:         { type: String, required: true },
   originalImageUrl: String,
   publicId:         String,
 
-  // Classification
   category: {
     type:     String,
     enum:     ['top', 'bottom', 'footwear', 'outerwear', 'accessory', 'full_body'],
@@ -22,7 +20,6 @@ const clothSchema = new mongoose.Schema({
   },
   subCategory: { type: String, index: true },
 
-  // Color
   color: {
     primary:     String,
     secondary:   [String],
@@ -30,8 +27,7 @@ const clothSchema = new mongoose.Schema({
     colorFamily: String,
   },
 
-  // Visual attributes
-  pattern:  String,   // solid, stripe, check, floral, graphic
+  pattern:  String,
   fabric:   String,
   fit:      String,
   style:    [String],
@@ -41,7 +37,6 @@ const clothSchema = new mongoose.Schema({
     default: 'casual',
   },
 
-  // Context
   season:             [String],
   occasions:          [String],
   weatherSuitability: [String],
@@ -50,7 +45,6 @@ const clothSchema = new mongoose.Schema({
     max: Number,
   },
 
-  // ROI tracking
   purchasePrice:    Number,
   purchaseCurrency: { type: String, default: 'INR' },
   purchaseDate:     Date,
@@ -58,21 +52,17 @@ const clothSchema = new mongoose.Schema({
   name:             String,
   notes:            String,
 
-  // Computed from WearLogs
   wearCount:   { type: Number, default: 0 },
   lastWornAt:  Date,
   costPerWear: Number,
 
-  // AI processing
   aiTagged:     { type: Boolean, default: false },
   aiConfidence: Number,
 
-  // Vector embedding — select: false so it's excluded from normal queries
   embedding:          { type: [Number], select: false },
   embeddingText:      String,
   embeddingUpdatedAt: Date,
 
-  // State
   isAvailable: { type: Boolean, default: true },
   isArchived:  { type: Boolean, default: false },
 

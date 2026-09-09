@@ -15,10 +15,8 @@ import userRoutes       from './src/routes/user.js'
 import tryOnRoutes      from './src/routes/tryOn.js'
 import errorHandler     from './src/middleware/errorHandler.js'
 
-
 const app = express()
 
-// Security
 app.use(helmet())
 app.use(cors({
   origin: process.env.CLIENT_URL || '*',
@@ -26,19 +24,16 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
   message: { success: false, message: 'Too many requests, please try again later' },
 })
 app.use('/api', limiter)
 
-// Body parsing
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// Request & response logging (enabled by default unless explicitly in production)
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'))
 
@@ -46,7 +41,6 @@ if (process.env.NODE_ENV !== 'production') {
     const startTime = Date.now()
     const timestamp = new Date().toLocaleTimeString()
 
-    // Helper to safely format body (truncate huge base64/long strings, prevent circular refs, depth limit, and Mongoose docs)
     const sanitizeData = (data, seen = new WeakSet(), depth = 0) => {
       if (!data || typeof data !== 'object') return data
       if (depth > 4) return '[Object]'
@@ -112,7 +106,6 @@ if (process.env.NODE_ENV !== 'production') {
       console.log('📦 Request Body:', JSON.stringify(sanitizeData(req.body), null, 2))
     }
 
-    // Intercept res.json to log the response safely
     const originalJson = res.json
     res.json = function (body) {
       try {
@@ -128,7 +121,6 @@ if (process.env.NODE_ENV !== 'production') {
         }
         console.log(`========================================================================\n`)
       } catch {
-        // Logging should never crash response
       }
 
       return originalJson.call(this, body)
@@ -138,12 +130,10 @@ if (process.env.NODE_ENV !== 'production') {
   })
 }
 
-// Health check
 app.get(['/health', '/api/health'], (req, res) => {
   res.json({ success: true, message: 'OutfitAI API is running' })
 })
 
-// Routes
 app.use('/api/auth',      authRoutes)
 app.use('/api/wardrobe',  wardrobeRoutes)
 app.use('/api/outfits',   outfitRoutes)
@@ -154,13 +144,10 @@ app.use('/api/analytics', analyticsRoutes)
 app.use('/api/user',      userRoutes)
 app.use('/api/try-on',    tryOnRoutes)
 
-
-// 404
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' })
 })
 
-// Error handler — must be last
 app.use(errorHandler)
 
 export default app

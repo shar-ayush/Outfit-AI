@@ -1,13 +1,3 @@
-// src/utils/exportWardrobe.js
-//
-// FIX (gap #4, partial): the plan wanted "Export wardrobe data (JSON
-// download)". The backend has no export endpoint, but this doesn't need
-// one - it's a legitimate frontend-only feature. Fetches every page of
-// the user's real wardrobe (same GET /api/wardrobe already used
-// everywhere else), writes it to a JSON file, and opens the native share
-// sheet. Uses expo-file-system + expo-sharing, both already installed
-// since Step 1.
-
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 

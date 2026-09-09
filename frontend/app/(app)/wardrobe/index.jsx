@@ -1,14 +1,3 @@
-// app/(app)/wardrobe/index.jsx
-//
-// Matches wardrobe_grid/code.html: sticky "My Collection" header with
-// search/sort icons, primary category filter row (solid pills), secondary
-// formality filter row (outlined pills), a 2-column grid, and a floating
-// action button opening the add-item bottom sheet.
-//
-// Uses FlashList per the plan ("FlashList is 10x faster... 200+ items")
-// with a fixed 2-column grid (see ClothCard.jsx header comment for why
-// this isn't true CSS masonry).
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
@@ -42,11 +31,6 @@ export default function WardrobeGridScreen() {
   const setFilters = useWardrobeStore((s) => s.setFilters);
   const sort = useWardrobeStore((s) => s.sort);
   const setSort = useWardrobeStore((s) => s.setSort);
-  // FIX (gap #8): loadOfflineCache/isOffline/setItems existed on this store
-  // since Step 4 but nothing ever called them — the offline-browsing
-  // feature was built but unreachable. Wired below: a successful fetch
-  // refreshes the cache, a failed fetch (genuinely offline, not just a
-  // 404) falls back to it.
   const offlineItems = useWardrobeStore((s) => s.items);
   const isOffline = useWardrobeStore((s) => s.isOffline);
   const setCachedItems = useWardrobeStore((s) => s.setItems);
@@ -57,7 +41,6 @@ export default function WardrobeGridScreen() {
   const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
   const [searchInput, setSearchInput] = useState(filters.search || '');
 
-  // Debounce search — 400ms per plan
   const searchTimeout = React.useRef(null);
   const handleSearchChange = (text) => {
     setSearchInput(text);
@@ -85,17 +68,12 @@ export default function WardrobeGridScreen() {
 
   const items = useMemo(() => data?.pages.flatMap((p) => p.clothes) || [], [data]);
 
-  // Keep the offline cache fresh on every successful, unfiltered first-page
-  // load — caching filtered/paginated results would make the offline
-  // fallback show an incomplete wardrobe, so only cache the common case.
   useEffect(() => {
     if (items.length > 0 && !filters.category && !filters.formality && !filters.search) {
       setCachedItems(items);
     }
   }, [items]);
 
-  // On a genuine network failure, fall back to the last cached wardrobe
-  // rather than always showing ErrorState.
   useEffect(() => {
     if (isError) loadOfflineCache();
   }, [isError]);
@@ -113,7 +91,6 @@ export default function WardrobeGridScreen() {
 
   return (
     <Screen edges={['top']} padded={false}>
-      {/* ── Sticky header + filters ─────────────────────────── */}
       <View style={styles.stickyHeader}>
         <View style={styles.titleRow}>
           <Text variant="titleMd">My Collection</Text>
@@ -166,7 +143,6 @@ export default function WardrobeGridScreen() {
         </View>
       </View>
 
-      {/* ── Grid ────────────────────────────────────────────── */}
       {isOffline && (
         <View style={styles.offlineBanner}>
           <MaterialCommunityIcons name="wifi-off" size={14} color={colors.secondary} />
@@ -209,12 +185,10 @@ export default function WardrobeGridScreen() {
         />
       )}
 
-      {/* ── FAB ─────────────────────────────────────────────── */}
       <Pressable style={[styles.fab, shadows.lg]} onPress={() => setUploadSheetOpen(true)}>
         <MaterialCommunityIcons name="plus" size={26} color={colors.onPrimary} />
       </Pressable>
 
-      {/* ── Upload picker sheet ─────────────────────────────── */}
       <BottomSheet visible={uploadSheetOpen} onClose={() => setUploadSheetOpen(false)} title="Add to Wardrobe">
         <SheetOption
           icon="camera-outline"
@@ -234,7 +208,6 @@ export default function WardrobeGridScreen() {
         />
       </BottomSheet>
 
-      {/* ── Sort sheet ──────────────────────────────────────── */}
       <BottomSheet visible={sortSheetOpen} onClose={() => setSortSheetOpen(false)} title="Sort By">
         {SORT_OPTIONS.map((option) => (
           <SheetOption

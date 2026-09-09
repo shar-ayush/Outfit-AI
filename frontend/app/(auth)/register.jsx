@@ -1,9 +1,3 @@
-// app/(auth)/register.jsx
-//
-// Matches register_screen/code.html: AuthHeader, "Create your account"
-// title, underline/floating-label inputs (email, username, password),
-// live password-strength bar, primary submit, login footer link.
-
 import React, { useState } from 'react';
 import { View, Pressable, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
@@ -41,7 +35,6 @@ export default function RegisterScreen() {
     setIsSubmitting(true);
     try {
       await register({ email: email.trim(), username: username.trim(), password });
-      // New accounts always need onboarding — no need to check onboardingCompleted here
       router.replace('/(auth)/onboarding/style-quiz');
     } catch (error) {
       const message = error?.response?.data?.message || 'Could not create your account';

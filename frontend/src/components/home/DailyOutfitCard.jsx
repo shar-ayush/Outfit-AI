@@ -1,10 +1,3 @@
-// src/components/home/DailyOutfitCard.jsx
-//
-// Matches home_dashboard's "Today's Recommendation" hero section: a
-// horizontal strip of item thumbnails (each with a category label chip),
-// then name/badges/why-it-works copy, daily stylist message, customize CTA,
-// then Worn Today / Save / Refresh actions.
-
 import React from 'react';
 import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
@@ -122,32 +115,6 @@ export default function DailyOutfitCard({
                 {outfit.whyItWorks}
               </Text>
             )}
-
-            {/* Weather Nudge Banner */}
-            {/* {weatherNudge && (
-              <Pressable
-                style={styles.weatherNudgeBanner}
-                onPress={onWeatherRefresh || onRefresh}
-                android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
-              >
-                <View style={styles.weatherNudgeIconContainer}>
-                  <MaterialCommunityIcons
-                    name={weatherNudge.icon || 'weather-cloudy-alert'}
-                    size={18}
-                    color={colors.tertiary}
-                  />
-                </View>
-                <View style={styles.weatherNudgeTextContainer}>
-                  <Text variant="labelMd" style={styles.weatherNudgeTitle}>
-                    Weather Update
-                  </Text>
-                  <Text variant="bodySm" color="secondary" style={styles.weatherNudgeMessage}>
-                    {weatherNudge.message}
-                  </Text>
-                </View>
-                <MaterialCommunityIcons name="refresh" size={18} color={colors.primary} />
-              </Pressable>
-            )} */}
 
             {onAskStylist && (
               <Pressable

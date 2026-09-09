@@ -1,10 +1,3 @@
-// src/components/analytics/CostPerWearList.jsx
-//
-// Reused for both "Best Investments" (bestValue, tone="success") and
-// "Worst Investments" (worstValue, tone="error") - both come from the same
-// real backend field (analyticsService.getCostPerWearAnalytics), just
-// sorted/sliced differently server-side.
-
 import React from 'react';
 import { View, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';

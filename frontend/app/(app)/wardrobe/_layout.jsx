@@ -1,8 +1,3 @@
-// app/(app)/wardrobe/_layout.jsx
-//
-// Nested Stack under the Wardrobe tab: grid (index) → item detail →
-// upload / bulk-upload as pushed screens, each with its own custom header.
-
 import { Stack } from 'expo-router';
 
 export default function WardrobeLayout() {

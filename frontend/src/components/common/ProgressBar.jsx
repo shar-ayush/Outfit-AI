@@ -1,14 +1,3 @@
-// src/components/common/ProgressBar.jsx
-//
-// Thin pill progress bar — used for onboarding quiz steps (style_quiz_step_1
-// shows "h-1 bg-surface-container-high rounded-full" with a black fill),
-// upload progress, and the "learning phase % complete" bar on the style
-// preferences screen.
-//
-// Usage:
-//   <ProgressBar progress={0.25} />                    — 25%, default black fill
-//   <ProgressBar progress={0.4} color="goldAccent" />  — gold fill (learning phase)
-
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';

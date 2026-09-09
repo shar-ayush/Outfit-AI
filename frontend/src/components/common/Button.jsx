@@ -1,19 +1,3 @@
-// src/components/common/Button.jsx
-//
-// Matches DESIGN.md "Buttons" spec exactly:
-//   Primary   — solid #000000 bg, white text, 8px radius
-//   Secondary — white bg, 1px #000000 border
-//   Premium   — solid gold (#C9A84C) bg — reserve for upgrade/special-edition CTAs only
-//   Ghost     — no fill/border, used for circular icon buttons in headers
-//     (e.g. back arrow, search, sort icons seen across every Stitch screen header)
-//
-// Usage:
-//   <Button onPress={submit}>Get Started</Button>
-//   <Button variant="secondary" onPress={goLogin}>Login</Button>
-//   <Button variant="premium" onPress={upgrade}>Upgrade</Button>
-//   <Button variant="ghost" icon="arrow-back" onPress={goBack} />
-//   <Button loading disabled>Sign Up</Button>
-
 import React from 'react';
 import { Pressable, ActivityIndicator, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -48,8 +32,8 @@ export default function Button({
   children,
   onPress,
   variant = 'primary',
-  size = 'lg', // 'lg' (full-width CTA, py-4) | 'md' (inline actions) | 'icon' (circular)
-  icon, // MaterialCommunityIcons name — renders icon-only if no children, or icon+label if both
+  size = 'lg',
+  icon,
   iconPosition = 'left',
   loading = false,
   disabled = false,
@@ -123,7 +107,7 @@ export default function Button({
 const styles = StyleSheet.create({
   container: {
     borderRadius: radius.DEFAULT,
-    paddingVertical: 16, // py-4
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },

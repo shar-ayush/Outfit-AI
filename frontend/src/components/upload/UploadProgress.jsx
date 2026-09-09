@@ -1,16 +1,3 @@
-// src/components/upload/UploadProgress.jsx
-//
-// IMPORTANT HONESTY NOTE: the backend's POST /wardrobe/upload is a single
-// blocking request — background removal + Gemini metadata extraction both
-// happen server-side before it responds (see wardrobeService.js). There is
-// no server-sent progress event for "now removing background" / "now
-// analyzing". This component shows a client-side SIMULATED step sequence
-// (Uploading → Analyzing) that advances on a timer WHILE the real request
-// is in flight, and only shows "Done" once the actual API response
-// resolves — so the final state is always truthful even though the
-// intermediate labels are a UX approximation of what's really a single
-// black-box request.
-
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -24,7 +11,6 @@ const STEPS = [
 ];
 
 export default function UploadProgress({ status }) {
-  // status: 'uploading' | 'analyzing' | 'done' | 'error'
   const [simulatedStep, setSimulatedStep] = useState('uploading');
 
   useEffect(() => {

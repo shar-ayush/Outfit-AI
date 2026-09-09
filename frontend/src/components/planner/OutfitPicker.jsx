@@ -1,8 +1,3 @@
-// src/components/planner/OutfitPicker.jsx
-//
-// Backed by the real GET /api/outfits/saved endpoint (useSavedOutfits,
-// already built in useOutfits.js).
-
 import React from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import Text from '@/components/common/Text';

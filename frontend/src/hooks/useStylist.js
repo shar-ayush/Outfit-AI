@@ -1,15 +1,3 @@
-// src/hooks/useStylist.js
-//
-// BACKEND-GROUNDED DESIGN NOTE:
-// ConversationSession.messages only stores { role, content, outfitIds }
-// (see backend/src/models/ConversationSession.js) — NOT full outfit
-// objects. So resuming a past session from the Sessions list can't just
-// render outfit cards from message.outfitIds directly; we have to fetch
-// each outfit by id via GET /outfits/:outfitId (a real, existing endpoint)
-// and attach the hydrated outfit objects before rendering. This is more
-// work than trusting a shortcut, but it's the only way to show real data
-// instead of guessing.
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { stylistApi, outfitsApi } from '@/api';
 import { QUERY_KEYS } from '@/constants/queryKeys';
@@ -78,9 +66,6 @@ async function hydrateSessionMessages(session) {
 
         return { ...message, type: 'outfits', outfits };
       } catch {
-        // If an outfit was since deleted/archived, degrade gracefully —
-        // show the text content without cards rather than failing the
-        // whole session load.
         return message;
       }
     })
@@ -109,7 +94,6 @@ export function useClearSession() {
   });
 }
 
-// NEW (backend fix #4) — Settings' "Clear All Conversations".
 export function useClearAllSessions() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -1,17 +1,3 @@
-// app/(auth)/splash.jsx
-//
-// Matches splash_screen/code.html: full black background, centered
-// "outfiT AI" wordmark (Inter regular, tight negative tracking — an
-// intentional logotype quirk in the Stitch design, reproduced exactly),
-// and a minimalist pulsing loading line at the bottom.
-//
-// This screen OWNS the auth bootstrap: it calls authStore.checkAuth(),
-// waits for a minimum visible duration (so it never flashes by too fast
-// on a local backend), then redirects based on the result:
-//   not authenticated              → /(auth)/welcome
-//   authenticated, no onboarding   → /(auth)/onboarding/style-quiz
-//   authenticated, onboarded       → /(app)/home
-
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -41,7 +27,6 @@ export default function SplashScreen() {
 
     (async () => {
       try {
-        // Race auth check with a 2.5s timeout so network delays never freeze the splash screen
         const authTimeout = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Auth check timeout')), 2500)
         );
@@ -97,7 +82,6 @@ function LoadingLine() {
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
-    // width: 0 -> 40 -> 100 -> fades; approximated as a smooth 0->100 pulse
     const width = 20 + progress.value * 80;
     const opacity = 0.15 + progress.value * 0.55;
     return { width, opacity };
@@ -126,7 +110,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     fontSize: 32,
     color: '#F9F9F9',
-    letterSpacing: -1.3, // -0.04em at 32px
+    letterSpacing: -1.3,
   },
   loadingWrap: {
     position: 'absolute',

@@ -1,9 +1,3 @@
-// src/utils/dateUtils.js
-//
-// Small date helpers shared across Home (greeting, daily query construction),
-// Planner (day labels), and Wear History (relative date formatting).
-// Uses date-fns since it's already in the dependency list.
-
 import { format, isToday, isYesterday, differenceInCalendarDays } from 'date-fns';
 
 export function getGreeting(date = new Date()) {
@@ -13,8 +7,6 @@ export function getGreeting(date = new Date()) {
   return 'Good evening';
 }
 
-// Matches backend's getSeason() in wearLogController.js exactly — keep in
-// sync if that ever changes.
 export function getSeason(date = new Date()) {
   const month = date.getMonth();
   if (month >= 2 && month <= 4) return 'spring';
@@ -24,14 +16,14 @@ export function getSeason(date = new Date()) {
 }
 
 export function getDayOfWeekLabel(date = new Date()) {
-  return format(date, 'EEEE'); // 'Monday'
+  return format(date, 'EEEE');
 }
 
 export function formatRelativeDate(date) {
   const d = new Date(date);
   if (isToday(d)) return 'Today';
   if (isYesterday(d)) return 'Yesterday';
-  return format(d, 'EEE d MMM'); // 'Mon 12 Aug'
+  return format(d, 'EEE d MMM');
 }
 
 export function daysSince(date) {
@@ -43,10 +35,6 @@ export function toISODateString(date = new Date()) {
   return format(date, 'yyyy-MM-dd');
 }
 
-/**
- * Parses a "YYYY-MM-DD" string into a local Date representing that calendar day at midnight.
- * Avoids UTC timezone conversion shifts caused by `new Date("YYYY-MM-DD")`.
- */
 export function parseLocalDate(dateInput) {
   if (!dateInput) return new Date();
   if (dateInput instanceof Date) return dateInput;

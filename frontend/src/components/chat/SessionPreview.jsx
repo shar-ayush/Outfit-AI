@@ -1,9 +1,3 @@
-// src/components/chat/SessionPreview.jsx
-//
-// Backend's getUserSessions returns { messages, shownItemIds, lastIntent,
-// updatedAt, messageCount, lastMessage } (see stylistService.js) — every
-// field used here is real.
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

@@ -1,20 +1,3 @@
-// app/(app)/stylist/index.jsx
-//
-// The centerpiece screen - wired directly to POST /api/stylist/chat, which
-// internally branches into two real, distinct response shapes
-// (stylistService.classifyMessage): a fashion QUESTION gets a plain-text
-// Gemini answer (`type: 'text'`), an OUTFIT REQUEST runs the full hybrid-
-// retrieval -> compatibility-scoring -> personalization -> novelty ->
-// LLM-re-rank pipeline (`type: 'outfits'`). This screen renders both
-// shapes distinctly rather than assuming every message returns cards.
-//
-// PERSONALIZATION BADGE: derived from the real `user.learningPhase`
-// (0/1/2) using the exact same weight table as
-// backend/src/services/recommendation/personalizationService.js
-// (applyPersonalization's [0.15, 0.30, 0.40]) - so "30% personalized"
-// in the header is not a made-up number, it's the actual blend ratio the
-// backend is using for this user right now.
-
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -34,7 +17,7 @@ import { useOutfitAction } from '@/hooks/useOutfits';
 import { useAuthStore, useStylistStore, useUIStore } from '@/stores';
 import { colors, spacing } from '@/theme';
 
-const PERSONALIZATION_WEIGHTS = [15, 30, 40]; // matches backend's [0.15, 0.30, 0.40] exactly
+const PERSONALIZATION_WEIGHTS = [15, 30, 40];
 
 export default function StylistChatScreen() {
   const router = useRouter();

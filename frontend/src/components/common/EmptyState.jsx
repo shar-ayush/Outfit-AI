@@ -1,18 +1,3 @@
-// src/components/common/EmptyState.jsx
-//
-// Used for: empty wardrobe, empty saved outfits, empty sessions list, empty
-// wear history, etc. Per plan: "illustration of an empty wardrobe, text
-// explaining what the app does, prominent CTA button."
-//
-// Usage:
-//   <EmptyState
-//     icon="hanger"
-//     title="Your wardrobe is empty"
-//     description="Add your first item to get personalized outfit suggestions."
-//     actionLabel="Add Your First Item"
-//     onAction={() => router.push('/wardrobe/upload')}
-//   />
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

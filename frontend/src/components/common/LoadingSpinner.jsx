@@ -1,8 +1,3 @@
-// src/components/common/LoadingSpinner.jsx
-//
-// Standard loading indicator. Use `fullScreen` for initial screen loads,
-// or inline (default) for smaller loading contexts (e.g. inside a card).
-
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import Text from './Text';

@@ -1,7 +1,3 @@
-// src/api/user.js
-//
-// Maps 1:1 to backend/src/routes/user.js
-
 import apiClient from './client';
 
 export async function getProfile() {
@@ -31,7 +27,7 @@ export async function changePassword({ currentPassword, newPassword }) {
 
 export async function getPreferences() {
   const { data } = await apiClient.get('/user/preferences');
-  return data.data; // { favoriteItems, contextProfiles, learningPhase, styleProfile }
+  return data.data;
 }
 
 export async function deleteAccount(password) {

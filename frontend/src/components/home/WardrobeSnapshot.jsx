@@ -1,10 +1,3 @@
-// src/components/home/WardrobeSnapshot.jsx
-//
-// Matches home_dashboard's "Not worn lately" horizontal scroll row.
-// Backed by the sleeping-items endpoint (not worn 60+ days) — see
-// home/index.jsx header comment for why this powers both the snapshot row
-// and the insights banner from a single query.
-
 import React from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -16,7 +9,7 @@ import { colors, spacing, radius } from '@/theme';
 export default function WardrobeSnapshot({ items = [], isLoading }) {
   const router = useRouter();
 
-  if (!isLoading && items.length === 0) return null; // nothing sleeping — don't clutter Home
+  if (!isLoading && items.length === 0) return null;
 
   return (
     <View>

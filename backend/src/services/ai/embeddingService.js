@@ -2,23 +2,14 @@ import { getEmbeddingModel } from '../../config/gemini.js'
 import Cloth from '../../models/Cloth.js'
 import ApiError from '../../utils/ApiError.js'
 
-// ─────────────────────────────────────────────
-// Generate embedding for a text string
-// ─────────────────────────────────────────────
-
 export async function generateEmbedding(text) {
   const model  = getEmbeddingModel()
   const result = await model.embedContent({
     content: { parts: [{ text }] },
     outputDimensionality: 768,
   })
-  return result.embedding.values // array of 768 floats
+  return result.embedding.values
 }
-
-// ─────────────────────────────────────────────
-// Generate and store embedding for a clothing item
-// Called after metadata extraction during upload
-// ─────────────────────────────────────────────
 
 export async function generateAndStoreClothEmbedding(clothId, embeddingText) {
   try {
@@ -32,17 +23,10 @@ export async function generateAndStoreClothEmbedding(clothId, embeddingText) {
 
     return embedding
   } catch (error) {
-    // Non-fatal — item is still usable without embedding
-    // Structured filter retrieval still works
     console.error(`Embedding generation failed for cloth ${clothId}:`, error.message)
     return null
   }
 }
-
-// ─────────────────────────────────────────────
-// Vector similarity search using MongoDB Atlas
-// Returns wardrobe items semantically similar to query
-// ─────────────────────────────────────────────
 
 export async function vectorSearchWardrobe(userId, queryText, options = {}) {
   const {
@@ -82,7 +66,7 @@ export async function vectorSearchWardrobe(userId, queryText, options = {}) {
       },
       {
         $project: {
-          embedding: 0, // never return the vector — it's 768 numbers
+          embedding: 0,
         },
       },
     ]
@@ -90,17 +74,10 @@ export async function vectorSearchWardrobe(userId, queryText, options = {}) {
     const results = await Cloth.aggregate(pipeline)
     return results
   } catch (error) {
-    // Vector search might fail if index doesn't exist yet
-    // Fall through to structured filter retrieval
     console.error('Vector search failed:', error.message)
     return []
   }
 }
-
-// ─────────────────────────────────────────────
-// Group vector search results by category
-// Output matches the format expected by compatibilityScorer
-// ─────────────────────────────────────────────
 
 export function groupByCategory(items) {
   return items.reduce((acc, item) => {

@@ -1,12 +1,3 @@
-// src/components/common/ErrorBoundary.jsx
-//
-// FIX (gap #12): there was no error boundary anywhere in the app. Any
-// unexpected render-time error (a null field from an API response, a
-// third-party library throwing, etc.) would crash the entire app to a
-// white/red screen with no recovery path. This is a standard React class
-// component (error boundaries cannot be hooks) wrapping the whole app
-// once, at the root layout.
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Text from './Text';
@@ -24,8 +15,6 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    // In a production app, report this to a crash-reporting service
-    // (Sentry, Bugsnag, etc.) - logging is the honest minimum for now.
     console.error('ErrorBoundary caught:', error, errorInfo);
   }
 

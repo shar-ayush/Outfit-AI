@@ -3,7 +3,6 @@ import mongoose from 'mongoose'
 const pairPreferenceSchema = new mongoose.Schema({
   userId:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 
-  // Always stored in canonical order — enforced in service layer
   itemAId: { type: mongoose.Schema.Types.ObjectId, ref: 'Cloth', required: true },
   itemBId: { type: mongoose.Schema.Types.ObjectId, ref: 'Cloth', required: true },
 

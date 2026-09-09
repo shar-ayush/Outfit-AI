@@ -1,12 +1,3 @@
-// app/(app)/wardrobe/upload.jsx
-//
-// Flow: choose camera/gallery -> preview (with compress-before-upload) ->
-// optional metadata -> upload (with simulated step progress, see
-// UploadProgress.jsx) -> success, back to wardrobe grid.
-//
-// See useImagePicker.js for why this uses the native picker's camera
-// rather than a fully custom expo-camera screen.
-
 import React, { useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';

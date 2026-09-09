@@ -5,10 +5,6 @@ import ApiError from '../utils/ApiError.js'
 import ApiResponse from '../utils/ApiResponse.js'
 import asyncHandler from '../utils/asyncHandler.js'
 
-// ─────────────────────────────────────────────
-// Token generation helpers
-// ─────────────────────────────────────────────
-
 function generateAccessToken(userId) {
   return jwt.sign(
     { id: userId },
@@ -25,11 +21,6 @@ function generateRefreshToken(userId) {
   )
 }
 
-// ─────────────────────────────────────────────
-// Register
-// POST /api/auth/register
-// ─────────────────────────────────────────────
-
 export const register = asyncHandler(async (req, res) => {
   const { email, password, username, gender } = req.body
 
@@ -41,7 +32,6 @@ export const register = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Password must be at least 8 characters')
   }
 
-  // Check duplicates
   const existing = await User.findOne({
     $or: [
       { email:    email.toLowerCase().trim() },
@@ -66,7 +56,6 @@ export const register = asyncHandler(async (req, res) => {
   const accessToken  = generateAccessToken(user._id)
   const refreshToken = generateRefreshToken(user._id)
 
-  // Store refresh token
   await User.findByIdAndUpdate(user._id, {
     $push: { refreshTokens: refreshToken },
   })
@@ -87,11 +76,6 @@ export const register = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Login
-// POST /api/auth/login
-// ─────────────────────────────────────────────
-
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body
 
@@ -99,7 +83,6 @@ export const login = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Email and password are required')
   }
 
-  // Explicitly select password (select: false in schema)
   const user = await User.findOne({
     email: email.toLowerCase().trim(),
   }).select('+password +refreshTokens')
@@ -116,7 +99,6 @@ export const login = asyncHandler(async (req, res) => {
   const accessToken  = generateAccessToken(user._id)
   const refreshToken = generateRefreshToken(user._id)
 
-  // Store refresh token — cap at 5 devices
   const tokens = [...(user.refreshTokens || []), refreshToken].slice(-5)
   await User.findByIdAndUpdate(user._id, { refreshTokens: tokens })
 
@@ -136,12 +118,6 @@ export const login = asyncHandler(async (req, res) => {
     }, 'Logged in successfully')
   )
 })
-
-// ─────────────────────────────────────────────
-// Refresh access token
-// POST /api/auth/refresh
-// Body: { refreshToken }
-// ─────────────────────────────────────────────
 
 export const refreshToken = asyncHandler(async (req, res) => {
   const { refreshToken: token } = req.body
@@ -163,7 +139,6 @@ export const refreshToken = asyncHandler(async (req, res) => {
     throw new ApiError(401, 'Refresh token not recognised')
   }
 
-  // Rotate refresh token — old one is invalidated
   const newAccessToken  = generateAccessToken(user._id)
   const newRefreshToken = generateRefreshToken(user._id)
 
@@ -184,13 +159,6 @@ export const refreshToken = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Logout
-// POST /api/auth/logout
-// Body: { refreshToken }
-// Invalidates this device's refresh token
-// ─────────────────────────────────────────────
-
 export const logout = asyncHandler(async (req, res) => {
   const { refreshToken: token } = req.body
   const userId = req.user._id
@@ -206,12 +174,6 @@ export const logout = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Logout all devices
-// POST /api/auth/logout-all
-// Clears all refresh tokens
-// ─────────────────────────────────────────────
-
 export const logoutAll = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(req.user._id, {
     refreshTokens: [],
@@ -222,30 +184,12 @@ export const logoutAll = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Get current user
-// GET /api/auth/me
-// ─────────────────────────────────────────────
-
 export const getMe = asyncHandler(async (req, res) => {
   return res.json(
     new ApiResponse(200, { user: req.user }, 'User fetched')
   )
 })
 
-// ─────────────────────────────────────────────
-// Forgot password — request a reset token
-// POST /api/auth/forgot-password
-// Body: { email }
-//
-// ⚠️ DEV-MODE BEHAVIOR: there is no email service wired into this
-// backend (no nodemailer/SES/SendGrid config exists anywhere in the
-// codebase). Rather than silently pretending an email was sent, this
-// endpoint returns the reset token directly in the response so the
-// frontend flow is fully testable without email infrastructure.
-// BEFORE SHIPPING TO PRODUCTION: remove `resetToken` from the response
-// and instead email it to the user via a real mail service.
-// ─────────────────────────────────────────────
  
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body
@@ -253,8 +197,6 @@ export const forgotPassword = asyncHandler(async (req, res) => {
  
   const user = await User.findOne({ email: email.toLowerCase().trim() })
  
-  // Always return 200 even if no user found — don't leak which emails
-  // are registered. Only actually generate/store a token if one exists.
   if (!user) {
     return res.json(
       new ApiResponse(200, {}, 'If that email exists, a reset link has been sent')
@@ -262,7 +204,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   }
  
   const resetToken = crypto.randomBytes(32).toString('hex')
-  const resetExpires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+  const resetExpires = new Date(Date.now() + 60 * 60 * 1000)
  
   await User.findByIdAndUpdate(user._id, {
     resetPasswordToken: resetToken,
@@ -272,17 +214,11 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   return res.json(
     new ApiResponse(200, {
       message: 'If that email exists, a reset link has been sent',
-      // DEV ONLY — see header comment. Remove this field in production.
       devResetToken: resetToken,
     }, 'Reset token generated')
   )
 })
  
-// ─────────────────────────────────────────────
-// Reset password with token
-// POST /api/auth/reset-password
-// Body: { token, newPassword }
-// ─────────────────────────────────────────────
  
 export const resetPassword = asyncHandler(async (req, res) => {
   const { token, newPassword } = req.body
@@ -306,7 +242,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
   user.password = newPassword
   user.resetPasswordToken = undefined
   user.resetPasswordExpires = undefined
-  user.refreshTokens = [] // force re-login everywhere, same as changePassword
+  user.refreshTokens = []
   await user.save()
  
   return res.json(

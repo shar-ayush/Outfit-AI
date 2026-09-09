@@ -1,14 +1,3 @@
-// app/(app)/profile/preferences.jsx
-//
-// Entirely backed by GET /api/user/preferences (userController.getPreferences):
-// favoriteItems (real ItemPreference.score > 0.7), contextProfiles (real
-// ContextPreference frequency maps, normalized server-side), learningPhase,
-// and the onboarding styleProfile. Nothing on this screen is computed from
-// anything other than these real fields.
-//
-// LEARNING PHASE -> PERCENT: 0/1/2 mapped to 0%/40%/100% per the agreed
-// plan language - a description of an ordinal real value, not invented data.
-
 import React from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';

@@ -1,18 +1,3 @@
-// src/components/upload/BulkImageGrid.jsx
-//
-// Two views in one file since they share the same grid/list shape and are
-// always used together in the bulk-upload flow:
-//   SelectionGrid — numbered thumbnails during gallery multi-select
-//   ProgressQueue — per-item status list after the upload API call resolves
-//
-// PROGRESS HONESTY NOTE (see UploadProgress.jsx for the single-upload
-// version of this note): POST /wardrobe/upload/bulk is one blocking call
-// for the whole batch — there's no per-item streaming status from the
-// server. ProgressQueue therefore shows all items as "Uploading" together
-// while the request is in flight, then reveals the REAL per-item outcome
-// (done/failed, with the actual error message from the server) once the
-// response arrives. Nothing here fakes a per-item result.
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -46,7 +31,6 @@ export function SelectionGrid({ assets, selectedUris, onToggle }) {
 }
 
 export function ProgressQueue({ items }) {
-  // items: [{ uri, fileName, status: 'uploading'|'done'|'failed', name?, error? }]
   return (
     <View style={styles.queue}>
       {items.map((item) => (

@@ -24,7 +24,6 @@ const outfitPlanSchema = new mongoose.Schema({
 
 }, { timestamps: true })
 
-// One plan per user per day
 outfitPlanSchema.index({ userId: 1, date: 1 }, { unique: true })
 outfitPlanSchema.index({ userId: 1, status: 1, date: 1 })
 

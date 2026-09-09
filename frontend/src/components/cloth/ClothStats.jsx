@@ -1,8 +1,3 @@
-// src/components/cloth/ClothStats.jsx
-//
-// Matches item_detail's "Stats Bento Grid": 2x2 grid — wear count, cost
-// per wear, preference score (bar + affinity label), days since worn.
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Text from '@/components/common/Text';

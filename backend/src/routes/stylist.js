@@ -12,10 +12,8 @@ const router = Router()
 
 router.use(auth)
 
-// Chat
 router.post('/chat', chat)
 
-// Sessions
 router.get('/sessions',              getSessions)
 router.get('/sessions/:sessionId',   getSession)
 router.delete('/sessions', clearAllSessionsHandler)

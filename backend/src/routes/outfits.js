@@ -17,28 +17,21 @@ const router = Router()
 
 router.use(auth)
 
-// Suggest — main recommendation endpoint
 router.post('/suggest', suggestOutfits)
 
-// Daily recommendations — before /:outfitId to avoid conflict
 router.get('/daily', getDailyOutfit)
 router.post('/daily/refresh', refreshDailyOutfit)
 
-// Create custom outfit
 router.post('/', createOutfit)
 
-// Saved outfits — before /:outfitId to avoid conflict
 router.get('/saved', getSaved)
 
-// Single outfit
 router.get('/:outfitId',         getOutfit)
 router.delete('/:outfitId',           removeOutfit)
 router.delete('/:outfitId/permanent', permanentDeleteOutfit)
 
-// Record action on outfit
 router.post('/:outfitId/action', outfitAction)
 
 router.get('/:outfitId/recommendation', getOutfitRecommendation)
-
 
 export default router

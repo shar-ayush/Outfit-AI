@@ -1,22 +1,3 @@
-// app/(app)/home/index.jsx
-//
-// Matches home_dashboard/code.html section-for-section: greeting+weather,
-// dismissible insights banner, hero "Today's Recommendation" card, quick
-// actions row, "Not worn lately" snapshot.
-//
-// DATA NOTE: the sleeping-items query powers BOTH the dismissible insights
-// banner ("N items sleeping...") AND the WardrobeSnapshot row below —
-// they're the same underlying "not worn in 60+ days" data, so one query
-// serves both rather than fabricating a separate "recently unworn" concept
-// the backend doesn't otherwise expose.
-//
-// DAILY SUGGESTION NOVELTY: this screen keeps its own local `sessionId`
-// (separate from the Stylist tab's chat session) so that tapping Refresh
-// multiple times benefits from the backend's novelty penalty — repeated
-// suggestions won't just show the exact same outfit again. This session
-// is scoped to this screen instance; it's intentionally not persisted to
-// stylistStore since the Home daily card isn't a "conversation".
-
 import React, { useState, useMemo, useCallback } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -52,12 +33,10 @@ export default function HomeScreen() {
   const refreshDailyOutfit = useRefreshDailyOutfit();
 
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  const [actionLoading, setActionLoading] = useState(null); // 'worn' | 'saved' | null
+  const [actionLoading, setActionLoading] = useState(null);
 
-  // Check if user has any clothes in their wardrobe
   const hasClothes = Boolean(wardrobeStats?.totalItems && wardrobeStats.totalItems > 0);
 
-  // Today's calendar day in user's device local timezone
   const todayDateStr = toISODateString(new Date());
 
   const weatherContext = useMemo(() => {
@@ -66,8 +45,6 @@ export default function HomeScreen() {
       : null;
   }, [weather]);
 
-  // Daily recommendation query — cached for today, zero re-trigger on screen switches.
-  // Disabled when the wardrobe is empty to eliminate redundant backend/AI calls.
   const {
     data: dailyData,
     isLoading: dailyLoading,
@@ -78,8 +55,6 @@ export default function HomeScreen() {
 
   const currentOutfit = dailyData?.outfit || null;
 
-  // When returning to home screen (e.g. after customizing in stylist chat),
-  // pull the latest daily recommendation only if user has clothes
   useFocusEffect(
     useCallback(() => {
       if (hasClothes) {
@@ -88,10 +63,8 @@ export default function HomeScreen() {
     }, [refetchDaily, hasClothes])
   );
 
-  // Today's planned outfit
   const { data: todayPlan, isLoading: todayPlanLoading } = useDayPlan(todayDateStr);
 
-  // Smart Weather Nudge: detect major temperature swings (>= 5°C) or sudden rain/snow
   const weatherNudge = useMemo(() => {
     if (!weather || !dailyData?.weatherAtRecommendation || !currentOutfit) {
       return null;
@@ -108,7 +81,6 @@ export default function HomeScreen() {
     const isRain = (cond) => /rain|drizzle|shower|thunderstorm|storm/.test(cond);
     const isSnow = (cond) => /snow|flurry|blizzard|sleet/.test(cond);
 
-    // Rainy/snow shift
     if (isRain(currentCondition) && !isRain(recCondition)) {
       return {
         type: 'rain',
@@ -125,7 +97,6 @@ export default function HomeScreen() {
       };
     }
 
-    // Significant temperature shift (>= 5°C)
     if (Math.abs(tempDelta) >= 5) {
       if (tempDelta > 0) {
         return {
@@ -161,7 +132,6 @@ export default function HomeScreen() {
       {
         onSuccess: () => {
           showToast('Outfit saved', 'success');
-          // Update cached daily outfit isSaved state
           queryClient.setQueryData(QUERY_KEYS.DAILY_OUTFIT(todayDateStr), (prev) => {
             if (!prev?.outfit) return prev;
             return {
@@ -279,7 +249,6 @@ export default function HomeScreen() {
           onAddClothes={() => router.push('/(app)/wardrobe/upload')}
         />
       </View>
-      {/* Today's Planned Outfit Card */}
       <TodayPlannedOutfitCard
         plan={todayPlan}
         isLoading={todayPlanLoading}

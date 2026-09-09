@@ -1,15 +1,3 @@
-// app/(app)/planner/[date].jsx
-//
-// State machine: 'view' (no plan -> empty options, or shows planned outfit)
-// <-> 'chooseOccasion' -> 'results' (pick one of the generated outfits) ->
-// creates a real OutfitPlan via POST /api/plans. If a plan already exists,
-// shows real Mark as Worn / Skip actions (PATCH /api/plans/:planId/status
-// - 'worn' triggers the exact same learning pipeline as a direct wear log,
-// per planController.js).
-//
-// OCCASION MAPPING: the mock's "Work" chip maps to the backend's real
-// 'office' occasion value (see Cloth.occasions enum) - not a made-up label.
-
 import React, { useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -87,10 +75,6 @@ export default function DayDetailScreen() {
 
   const handlePickCandidate = (outfit) => {
     createPlan.mutate(
-      // FIX (backend #3): forward recommendationId so marking this plan
-      // "worn" later can create a real RecommendationEvent — previously
-      // this was never captured, leaving the event trail empty for
-      // anything planned via this flow.
       { outfitId: outfit.outfitId, date, occasion, recommendationId: outfit.recommendationId },
       {
         onSuccess: () => {

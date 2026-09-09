@@ -1,8 +1,3 @@
-// src/components/home/QuickActions.jsx
-//
-// Matches home_dashboard's 4-icon quick-actions grid exactly: circular
-// surface-container icon buttons with a label-caps caption underneath.
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -37,7 +32,6 @@ export default function QuickActions({ onNavigate }) {
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between' },

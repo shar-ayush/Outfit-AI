@@ -8,20 +8,6 @@ const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '048e4734a4mshab3aef0959242d6p1
 const RAPIDAPI_HOST = process.env.RAPIDAPI_HOST || 'virtual-try-on7.p.rapidapi.com'
 const TRY_ON_API_URL = 'https://virtual-try-on7.p.rapidapi.com/results'
 
-/**
- * Execute Virtual Try-On using API4AI / RapidAPI
- * 
- * @param {Object} params
- * @param {string} params.userId
- * @param {Buffer} [params.personBuffer]
- * @param {string} [params.personMimeType]
- * @param {string} [params.personUrl]
- * @param {Buffer} [params.apparelBuffer]
- * @param {string} [params.apparelMimeType]
- * @param {string} [params.apparelUrl]
- * @param {string} [params.clothId]
- * @param {string} [params.prompt]
- */
 export async function executeVirtualTryOn({
   userId,
   personBuffer,
@@ -37,7 +23,6 @@ export async function executeVirtualTryOn({
   let resolvedApparelUrl = apparelUrl
   let referencedCloth = null
 
-  // 1. Resolve Person Image
   if (personBuffer) {
     const personExt = personMimeType.split('/')[1] || 'jpeg'
     const uploadResult = await uploadToCloudinary(personBuffer, {
@@ -51,7 +36,6 @@ export async function executeVirtualTryOn({
     throw new ApiError(400, 'A person photo is required for virtual try-on')
   }
 
-  // 2. Resolve Apparel Image
   if (clothId) {
     referencedCloth = await Cloth.findOne({ _id: clothId, userId })
     if (!referencedCloth) {
@@ -71,7 +55,6 @@ export async function executeVirtualTryOn({
     throw new ApiError(400, 'An apparel photo or wardrobe item is required for virtual try-on')
   }
 
-  // 3. Call RapidAPI Virtual Try-On
   const payload = new URLSearchParams()
   payload.set('url', resolvedPersonUrl)
   payload.set('url-apparel', resolvedApparelUrl)
@@ -87,7 +70,7 @@ export async function executeVirtualTryOn({
         'x-rapidapi-host': RAPIDAPI_HOST,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      timeout: 60000, // Generation may take 15-30s
+      timeout: 60000,
     })
   } catch (err) {
     const statusCode = err.response?.status || 500
@@ -117,14 +100,12 @@ export async function executeVirtualTryOn({
     throw new ApiError(502, 'Generated try-on image not found in service response')
   }
 
-  // 4. Convert Base64 output to Buffer & upload to Cloudinary
   const imageBuffer = Buffer.from(generatedEntity.image, 'base64')
   const uploadResult = await uploadToCloudinary(imageBuffer, {
     folder: `outfitai/${userId}/try-on-results`,
     format: (generatedEntity.format || 'jpg').toLowerCase(),
   })
 
-  // 5. Persist record in MongoDB
   const tryOnRecord = await TryOnResult.create({
     userId,
     clothId: referencedCloth ? referencedCloth._id : null,
@@ -148,9 +129,6 @@ export async function executeVirtualTryOn({
   return tryOnRecord
 }
 
-/**
- * Retrieve paginated Try-On history for a user
- */
 export async function getTryOnHistory(userId, { page = 1, limit = 20 } = {}) {
   const skip = (page - 1) * limit
   const [results, total] = await Promise.all([
@@ -174,9 +152,6 @@ export async function getTryOnHistory(userId, { page = 1, limit = 20 } = {}) {
   }
 }
 
-/**
- * Delete a Try-On result
- */
 export async function deleteTryOnResult(userId, resultId) {
   const record = await TryOnResult.findOne({ _id: resultId, userId })
   if (!record) {

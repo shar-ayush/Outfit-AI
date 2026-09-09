@@ -1,13 +1,3 @@
-// src/components/common/AuthHeader.jsx
-//
-// Exact match to the header markup shared by login_screen and
-// register_screen: back button (left), centered "OUTFIT AI" wordmark,
-// equal-width spacer (right) so the wordmark stays visually centered.
-//
-// Not part of the original common/ list in the design plan, but pulled
-// out here since it's byte-for-byte identical across two screens —
-// duplicating it inline would drift over time.
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

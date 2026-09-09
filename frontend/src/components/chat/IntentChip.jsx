@@ -1,13 +1,3 @@
-// src/components/chat/IntentChip.jsx
-//
-// BACKEND-GROUNDED: renders the real `intent` object returned alongside
-// outfit results — { occasions, formality, isRefinement,
-// refinementInstruction } — extracted server-side by
-// backend/src/services/ai/intentService.js. This makes the AI's
-// interpretation of the user's message visible and correctable, which
-// matters most on refinements ("make it more casual" only makes sense to
-// the user if they can see what changed).
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

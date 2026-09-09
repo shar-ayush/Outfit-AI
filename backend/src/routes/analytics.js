@@ -19,7 +19,6 @@ router.get('/wear-frequency',  wearFrequency)
 router.get('/sleeping-items',  sleepingItems)
 router.get('/utilization',     utilization)
 
-// Decay — manual trigger (call this weekly via cron or test manually)
 router.post('/decay', triggerDecay)
 
 export default router

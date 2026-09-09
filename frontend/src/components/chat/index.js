@@ -1,4 +1,3 @@
-// src/components/chat/index.js
 export { default as ChatBubble } from './ChatBubble';
 export { default as ChatOutfitCard } from './ChatOutfitCard';
 export { default as ChatInput } from './ChatInput';

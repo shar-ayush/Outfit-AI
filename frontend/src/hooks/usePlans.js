@@ -1,5 +1,3 @@
-// src/hooks/usePlans.js
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { plansApi } from '@/api';
 import { QUERY_KEYS } from '@/constants/queryKeys';
@@ -39,8 +37,6 @@ export function useUpdatePlanStatus() {
   return useMutation({
     mutationFn: ({ planId, ...body }) => plansApi.updatePlanStatus(planId, body),
     onSuccess: () => {
-      // A 'worn' status triggers the full learning pipeline server-side —
-      // invalidate analytics too so Home/Analytics reflect it immediately.
       queryClient.invalidateQueries({ queryKey: ['plans'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASHBOARD });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SLEEPING_ITEMS });

@@ -1,11 +1,3 @@
-// src/components/chat/ChatOutfitCard.jsx
-//
-// Inline outfit card shown when the stylist response is `type: 'outfits'`.
-// Unlike a static mock card, this surfaces the actual recommendation
-// pipeline output: ScoreBreakdown (compatibility/personalization/
-// freshness) and real outfit actions (worn/saved/skipped, each a genuine
-// RecommendationEvent on the backend).
-
 import React from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';

@@ -1,11 +1,3 @@
-// app/(app)/profile/index.jsx
-//
-// Replaces the temporary placeholder shipped between Steps 9 and 10.
-// Nav list intentionally excludes a separate "Sleeping Items" destination
-// - that data lives inside Analytics (see analytics.jsx header comment),
-// so a second entry point to the same data would be redundant, not
-// backend-grounded UI.
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';

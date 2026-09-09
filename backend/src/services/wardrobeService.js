@@ -6,25 +6,12 @@ import { generateAndStoreClothEmbedding } from './ai/embeddingService.js'
 import ApiError from '../utils/ApiError.js'
 import mongoose from 'mongoose'
 
-// ─────────────────────────────────────────────
-// Upload and process a single clothing item
-// Full pipeline:
-// image → background removal → cloudinary
-//       → gemini metadata extraction
-//       → embedding generation
-//       → save to DB
-// ─────────────────────────────────────────────
-
 export async function uploadSingleCloth(userId, imageBuffer, mimeType, extraData = {}) {
-  // Step 1 — process image and upload to Cloudinary
   const { imageUrl, publicId, originalImageUrl, originalPublicId } =
     await processAndUploadImage(imageBuffer, mimeType, userId)
 
-  // Step 2 — extract metadata from ORIGINAL buffer
-  // (background-removed image may confuse Gemini for some items)
   const metadata = await extractClothingMetadata(imageBuffer, mimeType)
 
-  // Step 3 — create cloth document
   const cloth = await Cloth.create({
     userId,
     imageUrl,
@@ -55,7 +42,6 @@ export async function uploadSingleCloth(userId, imageBuffer, mimeType, extraData
     aiConfidence: metadata.aiConfidence || 0.8,
     embeddingText: metadata.embeddingText,
 
-    // User-provided extra data (price, brand, name etc.)
     purchasePrice:    extraData.purchasePrice    || null,
     purchaseCurrency: extraData.purchaseCurrency || 'INR',
     purchaseDate:     extraData.purchaseDate     || null,
@@ -64,14 +50,9 @@ export async function uploadSingleCloth(userId, imageBuffer, mimeType, extraData
     notes:            extraData.notes            || null,
   })
 
-  // Step 4 — generate and store embedding (non-blocking)
-  // Don't await — let it happen in background
-  // Item is fully usable without embedding (filter retrieval still works)
   generateAndStoreClothEmbedding(cloth._id, metadata.embeddingText)
     .catch(err => console.error('Embedding error (non-fatal):', err.message))
 
-  // Step 5 — initialise item preference record
-  // Starts at neutral 0.5 — updated as user interacts
   ItemPreference.create({
     userId,
     clothId:    cloth._id,
@@ -82,12 +63,6 @@ export async function uploadSingleCloth(userId, imageBuffer, mimeType, extraData
   return cloth
 }
 
-// ─────────────────────────────────────────────
-// Bulk upload — processes multiple images
-// Batches Gemini calls (5 images per call)
-// to stay within API limits
-// ─────────────────────────────────────────────
-
 export async function uploadBulkClothes(userId, imageFiles) {
   if (!imageFiles || imageFiles.length === 0) {
     throw new ApiError(400, 'No images provided')
@@ -96,18 +71,15 @@ export async function uploadBulkClothes(userId, imageFiles) {
   const BATCH_SIZE = 5
   const results    = { success: [], failed: [] }
 
-  // Process images in batches of 5
   for (let i = 0; i < imageFiles.length; i += BATCH_SIZE) {
     const batch = imageFiles.slice(i, i + BATCH_SIZE)
 
-    // Step 1 — remove backgrounds and upload to Cloudinary in parallel
     const uploadResults = await Promise.allSettled(
       batch.map(file =>
         processAndUploadImage(file.buffer, file.mimetype, userId)
       )
     )
 
-    // Separate successful uploads
     const successfulUploads = []
     for (let j = 0; j < uploadResults.length; j++) {
       if (uploadResults[j].status === 'fulfilled') {
@@ -125,8 +97,6 @@ export async function uploadBulkClothes(userId, imageFiles) {
 
     if (successfulUploads.length === 0) continue
 
-    // Step 2 — batch metadata extraction
-    // One Gemini call for all images in this batch
     let metadataArray = []
     try {
       metadataArray = await extractBatchMetadata(
@@ -136,7 +106,6 @@ export async function uploadBulkClothes(userId, imageFiles) {
         }))
       )
     } catch (error) {
-      // Batch extraction failed — skip this batch
       for (let j = 0; j < successfulUploads.length; j++) {
         results.failed.push({
           index: i + j,
@@ -146,7 +115,6 @@ export async function uploadBulkClothes(userId, imageFiles) {
       continue
     }
 
-    // Step 3 — create cloth documents for successful extractions
     const clothDocs = await Promise.allSettled(
       successfulUploads.map(async ({ file, upload }, j) => {
         const metadata = metadataArray[j]
@@ -183,7 +151,6 @@ export async function uploadBulkClothes(userId, imageFiles) {
           embeddingText: metadata.embeddingText,
         })
 
-        // Fire-and-forget embedding + preference init
         generateAndStoreClothEmbedding(cloth._id, metadata.embeddingText)
           .catch(err => console.error('Embedding error:', err.message))
 
@@ -198,7 +165,6 @@ export async function uploadBulkClothes(userId, imageFiles) {
       })
     )
 
-    // Collect results
     clothDocs.forEach((result, j) => {
       if (result.status === 'fulfilled') {
         const item = result.value?.toObject ? result.value.toObject() : result.value
@@ -214,10 +180,6 @@ export async function uploadBulkClothes(userId, imageFiles) {
 
   return results
 }
-
-// ─────────────────────────────────────────────
-// Get user's wardrobe with filters and pagination
-// ─────────────────────────────────────────────
 
 export async function getWardrobe(userId, query = {}) {
   const {
@@ -242,7 +204,6 @@ export async function getWardrobe(userId, query = {}) {
   if (occasion)  filter.occasions = { $in: [occasion] }
   if (season)    filter.season    = { $in: [season] }
 
-  // Text search on name, brand, notes, subCategory
   if (search) {
     filter.$or = [
       { name:        { $regex: search, $options: 'i' } },
@@ -258,7 +219,7 @@ export async function getWardrobe(userId, query = {}) {
 
   const [clothes, total] = await Promise.all([
     Cloth.find(filter)
-         .select('-embedding')  // never return embedding vector
+         .select('-embedding')
          .sort(sort)
          .skip(skip)
          .limit(parseInt(limit))
@@ -278,10 +239,6 @@ export async function getWardrobe(userId, query = {}) {
   }
 }
 
-// ─────────────────────────────────────────────
-// Get single clothing item with preference data
-// ─────────────────────────────────────────────
-
 export async function getClothById(clothId, userId) {
   const cloth = await Cloth.findOne({
     _id:    clothId,
@@ -293,7 +250,6 @@ export async function getClothById(clothId, userId) {
 
   if (!cloth) throw new ApiError(404, 'Clothing item not found')
 
-  // Attach preference data if exists
   const preference = await ItemPreference.findOne({
     userId,
     clothId,
@@ -311,10 +267,6 @@ export async function getClothById(clothId, userId) {
       : null,
   }
 }
-
-// ─────────────────────────────────────────────
-// Update clothing item metadata
-// ─────────────────────────────────────────────
 
 export async function updateCloth(clothId, userId, updateData) {
   const cloth = await Cloth.findOne({ _id: clothId, userId })
@@ -335,7 +287,6 @@ export async function updateCloth(clothId, userId, updateData) {
 
   await cloth.save()
 
-  // If embeddingText-relevant fields changed, regenerate embedding
   const embeddingFields = ['occasions', 'season', 'formality', 'style']
   const needsReembedding = embeddingFields.some(f => updateData[f] !== undefined)
 
@@ -346,10 +297,6 @@ export async function updateCloth(clothId, userId, updateData) {
 
   return cloth
 }
-
-// ─────────────────────────────────────────────
-// Soft delete — archive instead of hard delete
-// ─────────────────────────────────────────────
 
 export async function archiveCloth(clothId, userId) {
   const cloth = await Cloth.findOneAndUpdate(
@@ -363,16 +310,10 @@ export async function archiveCloth(clothId, userId) {
   return cloth
 }
 
-// ─────────────────────────────────────────────
-// Hard delete — removes from DB and Cloudinary
-// Use only when user explicitly wants permanent deletion
-// ─────────────────────────────────────────────
-
 export async function deleteCloth(clothId, userId) {
   const cloth = await Cloth.findOne({ _id: clothId, userId })
   if (!cloth) throw new ApiError(404, 'Clothing item not found')
 
-  // Delete images from Cloudinary
   await Promise.all([
     deleteFromCloudinary(cloth.publicId),
     cloth.originalPublicId
@@ -380,7 +321,6 @@ export async function deleteCloth(clothId, userId) {
       : Promise.resolve(),
   ])
 
-  // Delete cloth and its preference data
   await Promise.all([
     Cloth.findByIdAndDelete(clothId),
     ItemPreference.deleteMany({ clothId }),
@@ -388,10 +328,6 @@ export async function deleteCloth(clothId, userId) {
 
   return { deleted: true, clothId }
 }
-
-// ─────────────────────────────────────────────
-// Toggle availability (in laundry, loaned out etc.)
-// ─────────────────────────────────────────────
 
 export async function toggleAvailability(clothId, userId) {
   const cloth = await Cloth.findOne({ _id: clothId, userId })
@@ -406,22 +342,16 @@ export async function toggleAvailability(clothId, userId) {
   }
 }
 
-// ─────────────────────────────────────────────
-// Get wardrobe stats — used for analytics
-// ─────────────────────────────────────────────
-
 export async function getWardrobeStats(userId) {
   const uid = new mongoose.Types.ObjectId(userId)
 
   const [categoryStats, totalValue, totalItems] = await Promise.all([
-    // Item count per category
     Cloth.aggregate([
       { $match: { userId: uid, isArchived: false } },
       { $group: { _id: '$category', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
 
-    // Total wardrobe value
     Cloth.aggregate([
       {
         $match: {
@@ -433,7 +363,6 @@ export async function getWardrobeStats(userId) {
       { $group: { _id: null, total: { $sum: '$purchasePrice' } } },
     ]),
 
-    // Total items
     Cloth.countDocuments({ userId: uid, isArchived: false }),
   ])
 

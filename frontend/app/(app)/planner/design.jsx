@@ -1,15 +1,3 @@
-// app/(app)/planner/design.jsx
-//
-// 2-Step interactive outfit designer for the weekly planner:
-// Step 1: Clothes selection grid with category filters (Tops, Bottoms,
-//         Outerwear, Footwear, Accessories) with strict slot limits:
-//         1 top, 1 bottom, 1 outerwear, 1 footwear, up to 3 accessories.
-// Step 2: Visual design canvas interpreting the combination:
-//         Top and Outerwear side-by-side on top (if outerwear selected),
-//         Bottom centered underneath, Shoes centered at the bottom,
-//         accessories accenting.
-// Saves the outfit to the user's collection and assigns it to the selected day.
-
 import React, { useState, useMemo } from 'react';
 import {
   View,
@@ -34,7 +22,6 @@ import { useCreateOutfit } from '@/hooks/useOutfits';
 import { useCreatePlan } from '@/hooks/usePlans';
 import { COLOR_HEX_MAP, getClothColorHex } from '@/constants/categories';
 import { colors, spacing, radius, shadows } from '@/theme';
-
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GRID_GAP = spacing.stackSm;
@@ -68,7 +55,7 @@ export default function DesignOutfitScreen() {
   const dateObj = date ? parseLocalDate(date) : new Date();
   const dateLabel = format(dateObj, 'EEEE, MMM d');
 
-  const [step, setStep] = useState('select'); // 'select' | 'canvas'
+  const [step, setStep] = useState('select');
   const [categoryFilter, setCategoryFilter] = useState(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState({
@@ -85,14 +72,12 @@ export default function DesignOutfitScreen() {
   const createOutfit = useCreateOutfit();
   const createPlan = useCreatePlan();
 
-  // Fetch user's wardrobe items
   const { data, isLoading } = useWardrobeList();
   const allClothes = useMemo(() => {
     const raw = data?.pages?.flatMap((p) => p.clothes) || [];
     return raw.filter((c) => c.isAvailable !== false && !c.isArchived);
   }, [data]);
 
-  // Filtered clothes for display in step 1
   const displayedClothes = useMemo(() => {
     return allClothes.filter((c) => {
       if (categoryFilter && c.category !== categoryFilter) return false;
@@ -108,7 +93,6 @@ export default function DesignOutfitScreen() {
     });
   }, [allClothes, categoryFilter, search]);
 
-  // Check if an item is selected
   const isItemSelected = (clothId) => {
     if (selected.top?._id === clothId) return true;
     if (selected.bottom?._id === clothId) return true;
@@ -117,7 +101,6 @@ export default function DesignOutfitScreen() {
     return selected.accessories.some((a) => a._id === clothId);
   };
 
-  // Handle tapping a clothing item with category constraints
   const handleItemPress = (cloth) => {
     const cat = cloth.category;
 
@@ -177,7 +160,6 @@ export default function DesignOutfitScreen() {
     (selected.top?.category === 'full_body') ||
     totalSelectedCount >= 2;
 
-  // Save outfit and plan for day
   const handleSave = async () => {
     if (!totalSelectedCount) {
       showToast('Please select items for your outfit', 'error');
@@ -230,7 +212,6 @@ export default function DesignOutfitScreen() {
 
   const isSaving = createOutfit.isPending || createPlan.isPending;
 
-  // Palette dots for visual canvas
   const allSelectedItems = [
     selected.top,
     selected.outerwear,
@@ -241,7 +222,6 @@ export default function DesignOutfitScreen() {
 
   return (
     <Screen edges={['top', 'bottom']} padded={false}>
-      {/* Header */}
       <View style={styles.header}>
         <Pressable
           onPress={() => {
@@ -289,10 +269,8 @@ export default function DesignOutfitScreen() {
         )}
       </View>
 
-      {/* STEP 1: CLOTHES SELECTION */}
       {step === 'select' && (
         <View style={styles.flex}>
-          {/* Category Filter Chips */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -324,7 +302,6 @@ export default function DesignOutfitScreen() {
             })}
           </ScrollView>
 
-          {/* Search bar */}
           <View style={styles.searchWrap}>
             <Input
               value={search}
@@ -334,7 +311,6 @@ export default function DesignOutfitScreen() {
             />
           </View>
 
-          {/* Grid of Clothes */}
           {isLoading ? (
             <LoadingSpinner fullScreen />
           ) : displayedClothes.length === 0 ? (
@@ -402,10 +378,8 @@ export default function DesignOutfitScreen() {
             </ScrollView>
           )}
 
-          {/* Slot Tray at bottom */}
           <View style={styles.trayBar}>
             <View style={styles.slotRow}>
-              {/* Top slot */}
               <Pressable
                 style={[styles.slotItem, selected.top && styles.slotItemFilled]}
                 onPress={() => setCategoryFilter('top')}
@@ -420,7 +394,6 @@ export default function DesignOutfitScreen() {
                 </Text>
               </Pressable>
 
-              {/* Outerwear slot */}
               <Pressable
                 style={[styles.slotItem, selected.outerwear && styles.slotItemFilled]}
                 onPress={() => setCategoryFilter('outerwear')}
@@ -435,7 +408,6 @@ export default function DesignOutfitScreen() {
                 </Text>
               </Pressable>
 
-              {/* Bottom slot */}
               <Pressable
                 style={[styles.slotItem, selected.bottom && styles.slotItemFilled]}
                 onPress={() => setCategoryFilter('bottom')}
@@ -450,7 +422,6 @@ export default function DesignOutfitScreen() {
                 </Text>
               </Pressable>
 
-              {/* Shoes slot */}
               <Pressable
                 style={[styles.slotItem, selected.footwear && styles.slotItemFilled]}
                 onPress={() => setCategoryFilter('footwear')}
@@ -465,7 +436,6 @@ export default function DesignOutfitScreen() {
                 </Text>
               </Pressable>
 
-              {/* Accessories slot */}
               <Pressable
                 style={[styles.slotItem, selected.accessories.length > 0 && styles.slotItemFilled]}
                 onPress={() => setCategoryFilter('accessory')}
@@ -498,14 +468,12 @@ export default function DesignOutfitScreen() {
         </View>
       )}
 
-      {/* STEP 2: DESIGN CANVAS */}
       {step === 'canvas' && (
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.canvasContainer}
           showsVerticalScrollIndicator={false}
         >
-          {/* Visual Outfit Canvas Board */}
           <View style={styles.boardCard}>
             <View style={styles.boardHeader}>
               <Text variant="labelCaps" color="secondary">
@@ -518,7 +486,6 @@ export default function DesignOutfitScreen() {
               </Pressable>
             </View>
 
-            {/* TOP ROW: Top and Outerwear side-by-side if outerwear exists */}
             <View style={styles.canvasSection}>
               {selected.outerwear ? (
                 <View>
@@ -526,7 +493,6 @@ export default function DesignOutfitScreen() {
                     Top & Outerwear (Upper Layering)
                   </Text>
                   <View style={styles.sideBySideRow}>
-                    {/* Top */}
                     <View style={styles.halfCard}>
                       <View style={styles.halfImageWrap}>
                         <Image
@@ -546,7 +512,6 @@ export default function DesignOutfitScreen() {
                       </Text>
                     </View>
 
-                    {/* Outerwear */}
                     <View style={styles.halfCard}>
                       <View style={styles.halfImageWrap}>
                         <Image
@@ -596,7 +561,6 @@ export default function DesignOutfitScreen() {
               )}
             </View>
 
-            {/* ACCESSORIES ROW (if any) */}
             {selected.accessories.length > 0 && (
               <View style={styles.canvasSection}>
                 <Text variant="caption" color="secondary" style={styles.sectionLabel}>
@@ -626,7 +590,6 @@ export default function DesignOutfitScreen() {
               </View>
             )}
 
-            {/* MIDDLE ROW: Bottom */}
             <View style={styles.canvasSection}>
               <Text variant="caption" color="secondary" style={styles.sectionLabel}>
                 Bottom
@@ -653,7 +616,6 @@ export default function DesignOutfitScreen() {
               </View>
             </View>
 
-            {/* BOTTOM ROW: Footwear */}
             <View style={styles.canvasSection}>
               <Text variant="caption" color="secondary" style={styles.sectionLabel}>
                 Shoes & Footwear
@@ -680,7 +642,6 @@ export default function DesignOutfitScreen() {
               </View>
             </View>
 
-            {/* Color Palette harmony summary */}
             <View style={styles.paletteRow}>
               <Text variant="caption" color="secondary">
                 Color Palette:
@@ -699,7 +660,6 @@ export default function DesignOutfitScreen() {
             </View>
           </View>
 
-          {/* Outfit Meta Card */}
           <View style={styles.metaCard}>
             <Text variant="titleMd" style={styles.metaTitle}>
               Outfit Details
@@ -785,7 +745,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerHigh,
   },
 
-  // Category filter
   categoryScrollWrapper: {
     height: 52,
     marginBottom: spacing.stackSm,
@@ -815,17 +774,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
   },
 
-  // Search
   searchWrap: {
     paddingHorizontal: spacing.gutter,
     marginBottom: spacing.stackSm,
   },
   searchInput: { height: 42 },
 
-  // Grid
   gridContainer: {
     paddingHorizontal: spacing.gutter,
-    paddingBottom: 150, // Space for tray bar
+    paddingBottom: 150,
   },
   grid: {
     flexDirection: 'row',
@@ -883,7 +840,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Slot Tray
   trayBar: {
     position: 'absolute',
     bottom: 0,
@@ -925,7 +881,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  // Canvas View
   canvasContainer: {
     padding: spacing.gutter,
     paddingBottom: spacing.stackXl * 2,
@@ -1006,7 +961,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Accessories in canvas
   accessoryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1036,7 +990,6 @@ const styles = StyleSheet.create({
     padding: 2,
   },
 
-  // Palette
   paletteRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1058,7 +1011,6 @@ const styles = StyleSheet.create({
     borderColor: colors.outlineVariant,
   },
 
-  // Meta Section
   metaCard: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radius.lg,

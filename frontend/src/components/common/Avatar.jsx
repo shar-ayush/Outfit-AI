@@ -1,13 +1,3 @@
-// src/components/common/Avatar.jsx
-//
-// Initials-based avatar (per frontend-design-plan.md: "avatar (initials-based)").
-// Falls back to initials when no imageUrl is provided — which, per plan, is
-// the default since there's no avatar-upload feature in the backend.
-//
-// Usage:
-//   <Avatar name="Ayush Sharma" size={64} />
-//   <Avatar imageUrl={cloth.imageUrl} size={40} />
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';

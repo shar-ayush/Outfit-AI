@@ -1,13 +1,3 @@
-// src/components/upload/ImagePreview.jsx
-//
-// Matches upload_preview_processing's ORIGINAL/CUTOUT toggle. Since
-// background removal happens server-side (during the actual upload
-// request — see wardrobeService.uploadSingleCloth), we only have the
-// original captured image client-side until the request completes. Before
-// upload completes, both toggle states show the same original photo; once
-// the server responds with the processed cloth.imageUrl, we swap CUTOUT to
-// show the real background-removed result.
-
 import React, { useState } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';

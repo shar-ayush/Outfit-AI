@@ -12,7 +12,7 @@ const userSchema = new mongoose.Schema({
   password: {
     type:     String,
     required: true,
-    select:   false, // never return password in queries
+    select:   false,
   },
   username: {
     type:     String,
@@ -26,7 +26,6 @@ const userSchema = new mongoose.Schema({
     enum: ['male', 'female', 'other', 'prefer_not_to_say'],
   },
 
-  // Seeded from onboarding quiz — used for cold start
   styleProfile: {
     preferredStyles:    { type: [String], default: [] },
     preferredColors:    { type: [String], default: [] },
@@ -36,19 +35,15 @@ const userSchema = new mongoose.Schema({
 
   onboardingCompleted: { type: Boolean, default: false },
 
-  // 0 = cold start, 1 = some data, 2 = well personalized
   learningPhase: { type: Number, default: 0, min: 0, max: 2 },
 
-  // Refresh tokens — stored to support multi-device and token revocation
   refreshTokens: [{ type: String, select: false }],
 
-  // Password reset — token is a random hex string, expires in 1 hour
   resetPasswordToken:   { type: String, select: false },
   resetPasswordExpires: { type: Date, select: false },
 
 }, { timestamps: true })
 
-// Hash password before save
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return
   this.password = await bcrypt.hash(this.password, 12)

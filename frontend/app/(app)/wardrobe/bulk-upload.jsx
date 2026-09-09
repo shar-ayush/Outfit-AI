@@ -1,13 +1,3 @@
-// app/(app)/wardrobe/bulk-upload.jsx
-//
-// Flow: multi-select up to 20 images from gallery -> confirm -> upload all
-// in one API call (backend internally batches 5-at-a-time server-side) ->
-// show real per-item success/failure from the response.
-//
-// See BulkImageGrid.jsx header comment for why the "in progress" state is
-// necessarily shared across all items rather than per-item streaming —
-// the backend endpoint is one blocking call for the whole batch.
-
 import React, { useState } from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -32,7 +22,7 @@ export default function BulkUploadScreen() {
   const uploadBulk = useUploadBulkClothes();
 
   const [assets, setAssets] = useState([]);
-  const [phase, setPhase] = useState('select'); // 'select' | 'uploading' | 'summary'
+  const [phase, setPhase] = useState('select');
   const [queueItems, setQueueItems] = useState([]);
   const [summary, setSummary] = useState(null);
 
@@ -70,8 +60,6 @@ export default function BulkUploadScreen() {
         uploadBulk.mutate(compressedAssets, { onSuccess: resolve, onError: reject });
       });
 
-      // Map results back onto the original (uncompressed-URI-keyed) queue —
-      // success items come back in order, failures include an `index`.
       const failedIndexes = new Set(result.errors.map((e) => e.index));
       let successCursor = 0;
       const finalQueue = assets.map((a, i) => {

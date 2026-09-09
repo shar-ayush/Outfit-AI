@@ -7,7 +7,6 @@ const itemPreferenceSchema = new mongoose.Schema({
   score:      { type: Number, default: 0.5, min: 0.1, max: 1.0 },
   confidence: { type: Number, default: 0.0, min: 0.0, max: 1.0 },
 
-  // Raw signal counts — never lose these
   signals: {
     worn:      { type: Number, default: 0 },
     saved:     { type: Number, default: 0 },

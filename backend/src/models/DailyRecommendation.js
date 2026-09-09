@@ -7,7 +7,6 @@ const dailyRecommendationSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
-  // User's local calendar day formatted as "YYYY-MM-DD"
   date: {
     type: String,
     required: true,
@@ -33,7 +32,6 @@ const dailyRecommendationSchema = new mongoose.Schema({
   },
 }, { timestamps: true })
 
-// Exactly one active daily recommendation per user per calendar day
 dailyRecommendationSchema.index({ userId: 1, date: 1 }, { unique: true })
 
 export default mongoose.model('DailyRecommendation', dailyRecommendationSchema)

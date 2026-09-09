@@ -1,22 +1,3 @@
-// app/(app)/wardrobe/[clothId].jsx
-//
-// Matches item_detail/code.html: overlay header (back + more), hero image,
-// color+name header, tag chips, stats bento grid, action row, attributes
-// list, wear history.
-//
-// DEVIATIONS FROM THE MOCK (both intentional — see comments below):
-//  1. "Log Wear" / "Plan" buttons are replaced with "Toggle Availability" /
-//     "Edit" / "Archive" — the backend's WearLog model requires an outfitId,
-//     there's no endpoint to log a single item as worn independent of an
-//     outfit, so a "Log Wear" button here would call an API that doesn't
-//     exist. Toggle/Edit/Archive all map to real endpoints.
-//  2. The mock's "AI STYLIST NOTE" is fabricated flavor text with no real
-//     backing data. Replaced with a genuinely-real AI badge showing the
-//     item's actual aiConfidence score.
-//  3. "Wear History" is derived by fetching recent wear logs and filtering
-//     client-side for entries containing this clothId — the backend has no
-//     per-item wear-history endpoint.
-
 import React, { useState } from 'react';
 import { View, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -36,9 +17,6 @@ import { COLOR_HEX_MAP, getClothColorHex } from '@/constants/categories';
 import { formatRelativeDate } from '@/utils/dateUtils';
 import { colors, spacing, radius } from '@/theme';
 
-
-
-
 const ATTRIBUTE_ROWS = [
   { key: 'fabric', label: 'Fabric' },
   { key: 'fit', label: 'Fit' },
@@ -56,9 +34,6 @@ export default function ItemDetailScreen() {
   const archiveCloth = useArchiveCloth();
   const deleteClothPermanent = useDeleteClothPermanent();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  // FIX (backend #6): now uses the real clothId filter on GET /wear-logs
-  // instead of fetching 50 general logs and filtering client-side (which
-  // silently missed older wears once a user had 50+ logs total).
   const { data: itemWearHistoryData } = useItemWearHistory(clothId, 5);
   const itemWearLogs = itemWearHistoryData?.logs || [];
 
@@ -142,13 +117,10 @@ export default function ItemDetailScreen() {
             </Text>
           </View>
 
-
-
           <Text variant="displayLg">
             {cloth.name || `${cloth.subCategory || cloth.category}`}
           </Text>
 
-          {/* Deduplicated Style & Formality Tags */}
           {(() => {
             const displayTags = [cloth.formality, ...(cloth.style || [])]
               .filter(Boolean)
@@ -168,7 +140,6 @@ export default function ItemDetailScreen() {
               </View>
             ) : null;
           })()}
-
 
           
 
@@ -194,7 +165,6 @@ export default function ItemDetailScreen() {
               fullWidth={false}
             />
           </View>
-
 
           <View style={styles.attributesSection}>
             <Text variant="headlineSm" style={styles.sectionTitle}>Attributes</Text>

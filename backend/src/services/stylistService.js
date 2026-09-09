@@ -6,14 +6,6 @@ import { mergeIntent } from '../utils/intentMerge.js'
 import { getGenerativeModel } from '../config/gemini.js'
 import ApiError from '../utils/ApiError.js'
 
-// ─────────────────────────────────────────────
-// Builds an honest chat message that surfaces any
-// constraint substitutions the pipeline made, rather
-// than a generic "here are your outfits" line.
-// This is the payoff of Steps 5/6 — the data existed,
-// it just wasn't being said out loud until now.
-// ─────────────────────────────────────────────
-
 function buildOutfitResponseMessage(outfits, requestedCount = 3) {
   if (outfits.length === 0) return null
 
@@ -39,20 +31,12 @@ function buildOutfitResponseMessage(outfits, requestedCount = 3) {
   return `${base} A couple of notes on fit to your request — ${notes}`
 }
 
-// ─────────────────────────────────────────────
-// Handle a stylist chat message
-// Step 1 update: routing + intent merge now happen HERE,
-// in a single extractIntent call, instead of a separate
-// keyword-based classifyMessage() step.
-// ─────────────────────────────────────────────
-
 export async function handleStylistMessage({
   userId,
   message,
   sessionId    = null,
   weatherContext = null,
 }) {
-  // Load session once — reused for both branches below
   let session = null
   if (sessionId) {
     session = await ConversationSession.findById(sessionId)
@@ -60,10 +44,8 @@ export async function handleStylistMessage({
 
   const conversationHistory = session?.messages || []
 
-  // Single Gemini call — classifies AND extracts intent
   const rawIntent = await extractIntent(message, conversationHistory)
 
-  // Merge onto prior session intent if this is a refinement
   const intent = mergeIntent(session?.lastIntent, rawIntent)
 
   if (intent.messageType === 'unrelated') {
@@ -76,9 +58,6 @@ export async function handleStylistMessage({
 
   const targetCount = intent.requestedCount || 3
 
-  // Outfit request — run full recommendation pipeline
-  // Pass the already-extracted+merged intent down so
-  // getOutfitRecommendations doesn't call Gemini again
   const result = await getOutfitRecommendations({
     userId,
     query:   message,
@@ -89,9 +68,6 @@ export async function handleStylistMessage({
     weatherContext,
   })
 
-  // If this session is linked to today's daily recommendation, or if the user
-  // is customizing today's look, sync the newly recommended outfit back to
-  // today's DailyRecommendation on the homescreen.
   let dailyUpdated = false
   if (result.outfits && result.outfits.length > 0) {
     const todayStr = new Date().toISOString().slice(0, 10)
@@ -102,7 +78,6 @@ export async function handleStylistMessage({
       sessionId: effectiveSessionId,
     })
 
-    // If not matched by sessionId directly, check if the session is refining today's outfit
     if (!dailyRec && (intent.isRefinement || /today/i.test(message))) {
       dailyRec = await DailyRecommendation.findOne({
         userId,
@@ -141,11 +116,6 @@ export async function handleStylistMessage({
   }
 }
 
-// ─────────────────────────────────────────────
-// Handle an unrelated (non-fashion) query
-// Politely declines and redirects the user to fashion/styling
-// ─────────────────────────────────────────────
-
 async function handleUnrelatedQuery({ userId, message, session, sessionId }) {
   const answer = "I'm your personal fashion stylist! I specialize only in clothing, styling advice, and outfit recommendations from your wardrobe. I can't assist with non-fashion topics, but feel free to ask me for outfit ideas, style tips, or what to wear!"
 
@@ -174,10 +144,6 @@ async function handleUnrelatedQuery({ userId, message, session, sessionId }) {
     sessionId: session?._id || sessionId,
   }
 }
-
-// ─────────────────────────────────────────────
-// Answer a general fashion question
-// ─────────────────────────────────────────────
 
 async function handleFashionQuestion({ userId, message, session, sessionId }) {
   const model = getGenerativeModel()
@@ -229,10 +195,6 @@ Keep your answer under 150 words. Be conversational and friendly.
   }
 }
 
-// ─────────────────────────────────────────────
-// Get or create a conversation session
-// ─────────────────────────────────────────────
-
 export async function getOrCreateSession(userId, sessionId = null) {
   if (sessionId) {
     const session = await ConversationSession.findOne({
@@ -248,10 +210,6 @@ export async function getOrCreateSession(userId, sessionId = null) {
     shownItemIds: [],
   })
 }
-
-// ─────────────────────────────────────────────
-// Get session history
-// ─────────────────────────────────────────────
 
 export async function getSessionHistory(sessionId, userId) {
   const session = await ConversationSession.findOne({
@@ -315,10 +273,6 @@ export async function getSessionHistory(sessionId, userId) {
   }
 }
 
-// ─────────────────────────────────────────────
-// Get all sessions for a user (paginated)
-// ─────────────────────────────────────────────
-
 export async function getUserSessions(userId, { page = 1, limit = 10 } = {}) {
   const skip = (parseInt(page) - 1) * parseInt(limit)
 
@@ -345,10 +299,6 @@ export async function getUserSessions(userId, { page = 1, limit = 10 } = {}) {
     },
   }
 }
-
-// ─────────────────────────────────────────────
-// Clear a session — start fresh conversation
-// ─────────────────────────────────────────────
 
 export async function clearSession(sessionId, userId) {
   const session = await ConversationSession.findOneAndUpdate(

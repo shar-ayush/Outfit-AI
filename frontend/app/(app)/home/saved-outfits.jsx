@@ -1,8 +1,3 @@
-// app/(app)/home/saved-outfits.jsx
-//
-// Dedicated Saved Outfits screen accessed from Home Quick Actions.
-// Backed by real GET /api/outfits/saved and DELETE /api/outfits/:outfitId.
-
 import React, { useState } from 'react';
 import { View, Pressable, FlatList, RefreshControl, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
@@ -103,7 +98,6 @@ export default function SavedOutfitsScreen() {
           onPress={() => handleOpenDetail(outfitId)}
           android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
         >
-          {/* Card Header */}
           <View style={styles.cardHeader}>
             <View style={styles.cardTitleWrap}>
               <Text variant="titleSm" style={styles.outfitName} numberOfLines={1}>
@@ -121,7 +115,6 @@ export default function SavedOutfitsScreen() {
             </View>
           </View>
 
-          {/* Clothes Grid / Strip */}
           <View style={styles.itemsStrip}>
             {items.map((it, idx) => {
               const cloth = it?.clothId && typeof it.clothId === 'object' ? it.clothId : it;
@@ -152,7 +145,6 @@ export default function SavedOutfitsScreen() {
             })}
           </View>
 
-          {/* Why it works snippet */}
           {item.whyItWorks && (
             <View style={styles.noteSection}>
               <Text variant="bodyMd" color="secondary" numberOfLines={2}>
@@ -162,7 +154,6 @@ export default function SavedOutfitsScreen() {
             </View>
           )}
 
-          {/* Card Actions */}
           <View style={styles.cardFooter}>
             <Button
               size="sm"
@@ -203,7 +194,6 @@ export default function SavedOutfitsScreen() {
 
   return (
     <Screen edges={['top', 'bottom']} padded={false}>
-      {/* Top Header */}
       <View style={styles.header}>
         <Pressable
           style={styles.backButton}
@@ -221,7 +211,6 @@ export default function SavedOutfitsScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Main Content */}
       {isLoading && outfits.length === 0 ? (
         <LoadingSpinner fullScreen />
       ) : outfits.length === 0 ? (

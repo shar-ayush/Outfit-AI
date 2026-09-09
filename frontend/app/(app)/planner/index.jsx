@@ -1,9 +1,3 @@
-// app/(app)/planner/index.jsx
-//
-// Backed entirely by GET /api/plans/week, which already returns a
-// pre-filled 7-day structure (backend fills gaps with `plan: null` -
-// see planController.getWeekPlan) - no client-side date-gap logic needed.
-
 import React, { useState } from 'react';
 import { View, ScrollView, Pressable, RefreshControl, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';

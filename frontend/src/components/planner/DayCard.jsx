@@ -1,10 +1,3 @@
-// src/components/planner/DayCard.jsx
-//
-// NOTE ON FIELD NAME: backend populates OutfitPlan.outfitId in place (see
-// planController.getWeekPlan / getPlans) — the populated Outfit document
-// still lives at `plan.outfitId`, it isn't renamed to `plan.outfit`.
-// Referencing `plan.outfitId.items[].clothId` throughout is correct.
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { format, isToday } from 'date-fns';

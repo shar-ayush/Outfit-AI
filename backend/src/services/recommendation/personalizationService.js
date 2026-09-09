@@ -3,26 +3,17 @@ import PairPreference from '../../models/PairPreference.js'
 import ContextPreference from '../../models/ContextPreference.js'
 import { getCanonicalPairIds } from '../../utils/pairUtils.js'
 
-// ─────────────────────────────────────────────
-// Signal weights — change these to recalibrate
-// without touching the raw signal counts
-// ─────────────────────────────────────────────
-
 const SIGNAL_WEIGHTS = {
   worn:     0.20,
   saved:    0.12,
   rejected: -0.15,
   skipped:  -0.05,
   shared:   0.25,
-  rated:    0.15, // multiplied by (rating / 5)
+  rated:    0.15,
 }
 
-// ─────────────────────────────────────────────
-// Compute item preference score from raw signals
-// ─────────────────────────────────────────────
-
 export function computeItemScore(signals) {
-  let score = 0.5 // neutral start
+  let score = 0.5
 
   score += (signals.worn     || 0) * SIGNAL_WEIGHTS.worn
   score += (signals.saved    || 0) * SIGNAL_WEIGHTS.saved
@@ -35,13 +26,8 @@ export function computeItemScore(signals) {
     score += signals.rated * SIGNAL_WEIGHTS.rated * (avgRating / 5)
   }
 
-  // Clamp to valid range
   return Math.max(0.1, Math.min(1.0, score))
 }
-
-// ─────────────────────────────────────────────
-// Compute pair affinity score from signals
-// ─────────────────────────────────────────────
 
 export function computePairAffinity(signals) {
   const positive = (signals.wornTogether || 0) * 2 + (signals.savedTogether || 0)
@@ -52,11 +38,6 @@ export function computePairAffinity(signals) {
   const rate = (positive - negative) / signals.shownTogether
   return Math.max(-1.0, Math.min(1.0, rate))
 }
-
-// ─────────────────────────────────────────────
-// Normalize a frequency map to weights (0 to 1)
-// { navy: 12, white: 8, grey: 6 } → { navy: 0.44, white: 0.30, grey: 0.22 }
-// ─────────────────────────────────────────────
 
 export function normalizeFrequencyMap(freqMap) {
   if (!freqMap) return {}
@@ -76,10 +57,6 @@ export function normalizeFrequencyMap(freqMap) {
   return Object.fromEntries(entries.map(([k, v]) => [k, (Number(v) || 0) / total]))
 }
 
-// ─────────────────────────────────────────────
-// Fetch all preference data for a user in one go
-// ─────────────────────────────────────────────
-
 export async function fetchUserPreferences(userId) {
   const [itemPrefs, pairPrefs, contextPrefs] = await Promise.all([
     ItemPreference.find({ userId }).lean(),
@@ -87,7 +64,6 @@ export async function fetchUserPreferences(userId) {
     ContextPreference.find({ userId }).lean(),
   ])
 
-  // Build lookup maps for O(1) access during scoring
   const itemScoreMap = {}
   for (const pref of itemPrefs) {
     itemScoreMap[pref.clothId.toString()] = {
@@ -119,21 +95,15 @@ export async function fetchUserPreferences(userId) {
   return { itemScoreMap, pairAffinityMap, contextMap }
 }
 
-// ─────────────────────────────────────────────
-// Score a single candidate outfit using preferences
-// ─────────────────────────────────────────────
-
 function getPersonalizationScore(outfit, preferences, contextKey) {
   const { itemScoreMap, pairAffinityMap, contextMap } = preferences
 
-  // Item-level scores
   const itemScores = outfit.items.map(item => {
     const pref = itemScoreMap[item._id.toString()]
-    return pref ? pref.score : 0.5 // default to neutral if no data
+    return pref ? pref.score : 0.5
   })
   const avgItemScore = itemScores.reduce((s, v) => s + v, 0) / itemScores.length
 
-  // Pair affinity scores
   const pairScores = []
   for (let i = 0; i < outfit.items.length; i++) {
     for (let j = i + 1; j < outfit.items.length; j++) {
@@ -144,7 +114,6 @@ function getPersonalizationScore(outfit, preferences, contextKey) {
       const key  = `${itemAId}_${itemBId}`
       const pair = pairAffinityMap[key]
       if (pair && pair.confidence > 0.1) {
-        // Normalize affinity from [-1,1] to [0,1]
         pairScores.push((pair.score + 1) / 2)
       }
     }
@@ -153,7 +122,6 @@ function getPersonalizationScore(outfit, preferences, contextKey) {
     ? pairScores.reduce((s, v) => s + v, 0) / pairScores.length
     : 0.5
 
-  // Context preference score
   let contextScore = 0.5
   const ctx = contextMap[contextKey]
   if (ctx && ctx.confidence > 0.1) {
@@ -168,15 +136,8 @@ function getPersonalizationScore(outfit, preferences, contextKey) {
       : 0.5
   }
 
-  // Combined personalization score
   return avgItemScore * 0.45 + avgPairScore * 0.30 + contextScore * 0.25
 }
-
-// ─────────────────────────────────────────────
-// Apply personalization to all candidates
-// Blends algorithm score with personal preference
-// Blend ratio depends on learningPhase
-// ─────────────────────────────────────────────
 
 export function applyPersonalization(candidates, preferences, intent, learningPhase = 0) {
   const contextKey = [
@@ -184,9 +145,6 @@ export function applyPersonalization(candidates, preferences, intent, learningPh
     intent?.formality || 'any',
   ].join('_')
 
-  // How much to trust personalization vs base compatibility
-  // learningPhase 0 = cold start → trust algorithm more
-  // learningPhase 2 = lots of data → trust personalization more
   const personalizationWeight = [0.15, 0.30, 0.40][learningPhase] || 0.15
   const algorithmWeight       = 1 - personalizationWeight
 

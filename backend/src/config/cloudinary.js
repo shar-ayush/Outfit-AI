@@ -9,7 +9,6 @@ export const configureCloudinary = () => {
   return cloudinary
 }
 
-// Initial configuration attempt
 configureCloudinary()
 
 export default cloudinary

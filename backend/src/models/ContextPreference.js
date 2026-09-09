@@ -3,7 +3,6 @@ import mongoose from 'mongoose'
 const contextPreferenceSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 
-  // e.g. 'office_formal', 'casual_hot', 'college_mild'
   contextKey: { type: String, required: true },
 
   occasion:    String,
@@ -11,7 +10,6 @@ const contextPreferenceSchema = new mongoose.Schema({
   season:      String,
   weatherType: String,
 
-  // Raw frequency counts — normalized on read
   colorFrequency:   { type: Map, of: Number, default: {} },
   styleFrequency:   { type: Map, of: Number, default: {} },
   patternFrequency: { type: Map, of: Number, default: {} },

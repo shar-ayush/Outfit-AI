@@ -3,12 +3,6 @@ import { getCanonicalPairIds, getAllPairs } from '../../utils/pairUtils.js'
 import { computePairAffinity } from '../recommendation/personalizationService.js'
 import mongoose from 'mongoose'
 
-// ─────────────────────────────────────────────
-// Update PairPreference for every pair of items in outfit
-// If outfit has 3 items → 3 pairs updated
-// If outfit has 4 items → 6 pairs updated
-// ─────────────────────────────────────────────
-
 export async function updatePairPreferences({
   userId,
   clothIds,
@@ -58,7 +52,6 @@ async function updateSinglePair({ userId, itemAId, itemBId, eventType }) {
     }
   )
 
-  // Recalculate affinity from raw signals
   const newAffinity   = computePairAffinity(pair.signals)
   const newConfidence = computePairConfidence(pair.signals)
 
@@ -68,13 +61,9 @@ async function updateSinglePair({ userId, itemAId, itemBId, eventType }) {
   })
 }
 
-// ─────────────────────────────────────────────
-// Map event type to pair signal field
-// ─────────────────────────────────────────────
-
 function buildPairSignalIncrement(eventType) {
   const inc = {
-    'signals.shownTogether': 1, // every event means they were shown together
+    'signals.shownTogether': 1,
   }
 
   switch (eventType) {
@@ -93,10 +82,6 @@ function buildPairSignalIncrement(eventType) {
 
   return inc
 }
-
-// ─────────────────────────────────────────────
-// Pair confidence — grows with co-occurrences
-// ─────────────────────────────────────────────
 
 function computePairConfidence(signals) {
   const positive = (signals.wornTogether  || 0) + (signals.savedTogether  || 0)

@@ -1,20 +1,3 @@
-// src/components/common/Input.jsx
-//
-// Two variants matching the two input treatments actually used across the
-// Stitch auth screens:
-//   "outlined"  — boxed, 1px border, used on login_screen
-//   "underline" — floating-label, bottom-border-only, used on register_screen
-//
-// Designed to drop straight into React Hook Form's <Controller>:
-//   <Controller
-//     control={control}
-//     name="email"
-//     render={({ field: { onChange, onBlur, value } }) => (
-//       <Input variant="underline" label="Email" value={value}
-//              onChangeText={onChange} onBlur={onBlur} error={errors.email?.message} />
-//     )}
-//   />
-
 import React, { useState } from 'react';
 import { View, TextInput, StyleSheet, Pressable, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -167,7 +150,6 @@ const styles = StyleSheet.create({
       : { includeFontPadding: false }),
   },
 
-  // Outlined variant
   outlinedBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -183,7 +165,6 @@ const styles = StyleSheet.create({
     textAlignVertical: 'center',
   },
 
-  // Underline / floating-label variant
   underlineBox: {
     position: 'relative',
     paddingTop: 18,

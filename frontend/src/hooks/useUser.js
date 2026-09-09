@@ -1,5 +1,3 @@
-// src/hooks/useUser.js
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '@/api';
 import { QUERY_KEYS } from '@/constants/queryKeys';
@@ -37,8 +35,6 @@ export function useDeleteAccount() {
   return useMutation({
     mutationFn: userApi.deleteAccount,
     onSuccess: () => {
-      // Account no longer exists server-side — just clear local state
-      // directly rather than calling the (now pointless) logout endpoint.
       logout();
     },
   });

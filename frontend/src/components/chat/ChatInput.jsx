@@ -1,9 +1,3 @@
-// src/components/chat/ChatInput.jsx
-//
-// Backend caps messages at 500 chars (see stylistController.js validation)
-// — enforced here client-side too so the user gets immediate feedback
-// instead of a 400 response.
-
 import React, { useState } from 'react';
 import { View, TextInput, Pressable, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';

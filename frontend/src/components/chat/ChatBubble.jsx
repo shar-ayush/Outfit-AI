@@ -1,9 +1,3 @@
-// src/components/chat/ChatBubble.jsx
-//
-// Plain text message bubble — used for user messages and for assistant
-// text answers (backend's `type: 'text'` response for fashion questions,
-// as opposed to `type: 'outfits'` which renders ChatOutfitCard instead).
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Text from '@/components/common/Text';

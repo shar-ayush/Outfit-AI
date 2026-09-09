@@ -1,8 +1,3 @@
-// src/components/planner/PlanStatusBadge.jsx
-//
-// Maps OutfitPlan.status ('planned'|'worn'|'skipped'|'cancelled') to a
-// tone — thin wrapper over the common Badge component's `status` type.
-
 import React from 'react';
 import Badge from '@/components/common/Badge';
 

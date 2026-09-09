@@ -12,7 +12,7 @@ const recommendationEventSchema = new mongoose.Schema({
     index:    true,
   },
 
-  value:    Number,  // rating value for 'rated' events
+  value:    Number,
   position: Number,
 
   context: {

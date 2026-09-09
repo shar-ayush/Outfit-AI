@@ -1,13 +1,4 @@
-// ─────────────────────────────────────────────
-// Merge a freshly-extracted intent onto the previous
-// session intent. Only used when isRefinement is true.
-// Field-level merge: a refinement that only mentions the
-// top color leaves bottom/footwear/mood/etc exactly as
-// they were in the previous turn.
-// ─────────────────────────────────────────────
-
 export function mergeIntent(previousIntent, newIntent) {
-  // Not a refinement, or no prior intent to merge onto — fresh start
   if (!newIntent.isRefinement || !previousIntent) {
     return newIntent
   }
@@ -30,10 +21,6 @@ export function mergeIntent(previousIntent, newIntent) {
       newIntent.resetSlots || []
     ),
 
-    // Exclude constraints: a refinement that adds new exclusions
-    // appends to (and de-dupes against) the prior list rather than
-    // replacing it — "no heels" earlier + "also nothing black" now
-    // should keep both.
     excludeConstraints: mergeExcludeConstraints(
       previousIntent.excludeConstraints || [],
       newIntent.excludeConstraints || []
@@ -52,7 +39,6 @@ function mergeSlotConstraints(previous, incoming, resetSlots = []) {
   const merged = {}
 
   for (const slot of slots) {
-    // If this slot was explicitly reset/cleared by the user, do not inherit previous constraints
     if (resetSlots.includes(slot)) {
       if (incoming[slot] && (incoming[slot].color || incoming[slot].subCategory || incoming[slot].pattern)) {
         merged[slot] = incoming[slot]
@@ -60,14 +46,11 @@ function mergeSlotConstraints(previous, incoming, resetSlots = []) {
       continue
     }
 
-    // If incoming explicitly specified this slot in the current turn,
-    // the incoming definition takes precedence
     if (incoming[slot]) {
       merged[slot] = incoming[slot]
       continue
     }
 
-    // Otherwise preserve previous constraint for untouched slot
     if (previous[slot]) {
       merged[slot] = previous[slot]
     }

@@ -1,14 +1,3 @@
-// app/(app)/profile/analytics.jsx
-//
-// Every section here reads directly from GET /api/analytics/dashboard -
-// one call, per analyticsService.getDashboardSummary. Sleeping items
-// (dropped from a separate nav destination on the Profile home screen)
-// lives here since that's where the backend already aggregates it.
-//
-// Reuses Home's WardrobeSnapshot for the sleeping-items row rather than
-// building a near-identical component - same shape, same real data
-// source, no reason to duplicate it.
-
 import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';

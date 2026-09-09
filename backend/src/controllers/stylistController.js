@@ -9,12 +9,6 @@ import {
   clearAllSessions
 } from '../services/stylistService.js'
 
-// ─────────────────────────────────────────────
-// Send message to stylist
-// POST /api/stylist/chat
-// Body: { message, sessionId?, weatherContext? }
-// ─────────────────────────────────────────────
-
 export const chat = asyncHandler(async (req, res) => {
   const {
     message,
@@ -42,11 +36,6 @@ export const chat = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Get session history
-// GET /api/stylist/sessions/:sessionId
-// ─────────────────────────────────────────────
-
 export const getSession = asyncHandler(async (req, res) => {
   const session = await getSessionHistory(
     req.params.sessionId,
@@ -58,12 +47,6 @@ export const getSession = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// Get all user sessions
-// GET /api/stylist/sessions
-// Query: page, limit
-// ─────────────────────────────────────────────
-
 export const getSessions = asyncHandler(async (req, res) => {
   const result = await getUserSessions(req.user._id, req.query)
 
@@ -71,11 +54,6 @@ export const getSessions = asyncHandler(async (req, res) => {
     new ApiResponse(200, result, 'Sessions fetched')
   )
 })
-
-// ─────────────────────────────────────────────
-// Clear session — start fresh
-// DELETE /api/stylist/sessions/:sessionId
-// ─────────────────────────────────────────────
 
 export const clearSessionHandler = asyncHandler(async (req, res) => {
   const result = await clearSession(

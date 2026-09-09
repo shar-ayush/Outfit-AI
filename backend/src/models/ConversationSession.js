@@ -38,7 +38,6 @@ const conversationSessionSchema = new mongoose.Schema({
     weatherSuitability: String,
     style:              [String],
 
-    // NEW — added in Step 1
     slotConstraints: {
       top:        slotConstraintSchema,
       bottom:     slotConstraintSchema,

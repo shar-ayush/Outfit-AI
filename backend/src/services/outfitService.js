@@ -11,20 +11,12 @@ import { processSignal } from './learning/signalProcessor.js'
 import ApiError from '../utils/ApiError.js'
 import mongoose from 'mongoose'
 
-// ─────────────────────────────────────────────
-// Get outfit recommendations
-// Full hybrid pipeline:
-// intent extraction → hybrid retrieval
-// → compatibility scoring → personalization
-// → novelty penalty → LLM re-ranking
-// ─────────────────────────────────────────────
-
 export async function getOutfitRecommendations({
   userId,
   query,
   sessionId = null,
-  session = null,        // NEW — allows caller (stylistService) to pass an already-loaded session
-  precomputedIntent = null, // NEW — allows caller to skip a redundant extractIntent call
+  session = null,
+  precomputedIntent = null,
   count = 3,
   weatherContext = null,
 }) {
@@ -33,7 +25,6 @@ export async function getOutfitRecommendations({
     .select('learningPhase')
     .lean()
 
-  // Guard against empty wardrobe — avoid running Gemini / hybrid retrieval when user has no clothes
   const totalClothes = await Cloth.countDocuments({ userId, isArchived: false })
   if (totalClothes === 0) {
     return {
@@ -44,19 +35,13 @@ export async function getOutfitRecommendations({
     }
   }
 
-  // If session wasn't passed in (e.g. direct /outfits/suggest call, not via stylist chat),
-  // load it here exactly as before
   if (!session && sessionId) {
     session = await ConversationSession.findById(sessionId)
   }
   const conversationHistory = session?.messages || []
 
-  // Use the precomputed intent if the caller already extracted+merged one
-  // (stylistService does this now); otherwise extract fresh (still used
-  // by the direct /outfits/suggest endpoint, which has no router step)
   const intent = precomputedIntent || await extractIntent(query, conversationHistory)
 
-  // Inject weather into intent if provided
   if (weatherContext) {
     if (!intent.weatherSuitability) {
       if (weatherContext.temperature > 28) intent.weatherSuitability = 'hot'
@@ -72,7 +57,6 @@ export async function getOutfitRecommendations({
     }
   }
 
-  // Step 2 — hybrid retrieval
   const candidatePool = await hybridRetrieval(userId, query, intent)
 
   if (candidatePool.isEmpty) {
@@ -84,10 +68,8 @@ export async function getOutfitRecommendations({
     }
   }
 
-  // Items already shown in this session (for novelty)
   const shownItemIds = session?.shownItemIds || []
 
-  // Step 3 — rank candidates through full pipeline
   const rankedOutfits = await rankCandidates({
     candidatePool,
     userId,
@@ -108,10 +90,8 @@ export async function getOutfitRecommendations({
     }
   }
 
-  // Step 4 — persist outfits and recommendations to DB
   const savedOutfits = await Promise.all(
     rankedOutfits.map(async (outfit, position) => {
-      // Save outfit document
       const savedOutfit = await Outfit.create({
         userId,
         items: outfit.items.map((item, idx) => ({
@@ -136,8 +116,6 @@ export async function getOutfitRecommendations({
         vibe: outfit.vibe,
       })
 
-      // Save recommendation record with full score breakdown,
-      // verification result, and retrieval trail
       const recommendation = await Recommendation.create({
         userId,
         outfitId: savedOutfit._id,
@@ -167,7 +145,6 @@ export async function getOutfitRecommendations({
         shownAt: new Date(),
       })
 
-      // Log shown event
       await RecommendationEvent.create({
         userId,
         recommendationId: recommendation._id,
@@ -200,7 +177,6 @@ export async function getOutfitRecommendations({
     })
   )
 
-  // Step 5 — update conversation session
   const allShownItemIds = [
     ...shownItemIds,
     ...rankedOutfits.flatMap(o => o.items.map(i => i._id.toString())),
@@ -225,7 +201,6 @@ export async function getOutfitRecommendations({
     session.lastIntent = intent
     await session.save()
   } else {
-    // Create new session
     const newSession = await ConversationSession.create({
       userId,
       messages: [
@@ -252,17 +227,12 @@ export async function getOutfitRecommendations({
         .reduce((sum, arr) => sum + arr.length, 0),
       wasRelaxed:    candidatePool.wasRelaxed,
       retrievalMode: candidatePool.agenticLoopUsed ? 'agentic' : 'fixed_filter_fallback',
-      relaxLevel:    candidatePool.relaxLevel ?? null, // only meaningful on the fallback path now
+      relaxLevel:    candidatePool.relaxLevel ?? null,
       toolCallCount: candidatePool.retrievalTrail?.length ?? 0,
       learningPhase: user?.learningPhase || 0,
     },
   }
 }
-
-// ─────────────────────────────────────────────
-// Record user action on an outfit
-// Triggers the learning pipeline
-// ─────────────────────────────────────────────
 
 export async function recordOutfitAction({
   userId,
@@ -276,16 +246,12 @@ export async function recordOutfitAction({
   const outfit = await Outfit.findOne({ _id: outfitId, userId })
   if (!outfit) throw new ApiError(404, 'Outfit not found')
 
-  // Save outfit if action is save
   if (eventType === 'saved') {
     await Outfit.findByIdAndUpdate(outfitId, { isSaved: true })
   } else if (eventType === 'unsaved' || eventType === 'unsave') {
     await Outfit.findByIdAndUpdate(outfitId, { isSaved: false })
   }
 
-  // processSignal now handles RecommendationEvent creation + Recommendation
-  // status update itself when recommendationId is provided — no need to
-  // duplicate that here.
   await processSignal({
     userId,
     outfitId,
@@ -297,10 +263,6 @@ export async function recordOutfitAction({
 
   return { success: true, eventType, outfitId }
 }
-
-// ─────────────────────────────────────────────
-// Get saved outfits
-// ─────────────────────────────────────────────
 
 export async function getSavedOutfits(userId, query = {}) {
   const { page = 1, limit = 10 } = query
@@ -329,10 +291,6 @@ export async function getSavedOutfits(userId, query = {}) {
   }
 }
 
-// ─────────────────────────────────────────────
-// Get a single outfit by ID
-// ─────────────────────────────────────────────
-
 export async function getOutfitById(outfitId, userId) {
   const outfit = await Outfit.findOne({ _id: outfitId, userId })
     .populate({
@@ -346,20 +304,12 @@ export async function getOutfitById(outfitId, userId) {
 }
 
 export async function getRecommendationByOutfitId(outfitId, userId) {
-  // An outfit can only ever have been recommended once by the current
-  // pipeline (one Outfit doc <-> one Recommendation doc, created together
-  // in getOutfitRecommendations) — .findOne with no sort ambiguity needed,
-  // but sort by createdAt desc defensively in case that ever changes.
   const recommendation = await Recommendation.findOne({ outfitId, userId })
     .sort({ createdAt: -1 })
     .lean()
 
-  return recommendation // null if this outfit was user-created, not suggested
+  return recommendation
 }
-
-// ─────────────────────────────────────────────
-// Delete saved outfit
-// ─────────────────────────────────────────────
 
 export async function deleteOutfit(outfitId, userId, permanent = false) {
   if (permanent) {
@@ -378,10 +328,6 @@ export async function deleteOutfit(outfitId, userId, permanent = false) {
   if (!outfit) throw new ApiError(404, 'Outfit not found')
   return { deleted: true, permanent: false, outfitId }
 }
-
-// ─────────────────────────────────────────────
-// Create custom outfit (user created)
-// ─────────────────────────────────────────────
 
 export async function createCustomOutfit(userId, { items, outfitName, occasion, formality, isSaved = true }) {
   if (!items || !items.length) {
@@ -429,11 +375,6 @@ export async function createCustomOutfit(userId, { items, outfitName, occasion, 
     .lean()
 }
 
-// ─────────────────────────────────────────────
-// Format populated Outfit document to match
-// client expectation for recommendation cards
-// ─────────────────────────────────────────────
-
 function formatDailyOutfitForClient(outfitDoc, recommendationId) {
   if (!outfitDoc) return null
   return {
@@ -462,14 +403,10 @@ function formatDailyOutfitForClient(outfitDoc, recommendationId) {
   }
 }
 
-// ─────────────────────────────────────────────
-// Build context-aware daily prompt & stylist note
-// ─────────────────────────────────────────────
-
 function buildDailyPrompt(date, weatherContext, reason = null) {
   const d = new Date(date)
   const dayName = d.toLocaleDateString('en-US', { weekday: 'long' })
-  const dayOfWeek = d.getDay() // 0 = Sun, 6 = Sat
+  const dayOfWeek = d.getDay()
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
   const isFriday = dayOfWeek === 5
 
@@ -514,16 +451,11 @@ export function buildDailyStylistNote(outfit, dayName) {
   return `Curated for your ${dayName}: An effortless ${vibe.toLowerCase()} look tailored to today's weather.`
 }
 
-// ─────────────────────────────────────────────
-// Get or create today's daily recommendation
-// ─────────────────────────────────────────────
-
 export async function getOrCreateDailyRecommendation({ userId, date, weatherContext = null }) {
   if (!date) {
     throw new ApiError(400, 'Date string (YYYY-MM-DD) is required')
   }
 
-  // 1. Check if daily recommendation exists for user + date
   const existingDaily = await DailyRecommendation.findOne({ userId, date })
     .populate({
       path: 'outfitId',
@@ -545,7 +477,6 @@ export async function getOrCreateDailyRecommendation({ userId, date, weatherCont
     }
   }
 
-  // Guard against empty wardrobe — avoid running recommendation pipeline if user has no clothes
   const totalClothes = await Cloth.countDocuments({ userId, isArchived: false })
   if (totalClothes === 0) {
     return {
@@ -560,7 +491,6 @@ export async function getOrCreateDailyRecommendation({ userId, date, weatherCont
     }
   }
 
-  // 2. Generate initial daily suggestion with context-aware prompt
   const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' })
   const query = buildDailyPrompt(date, weatherContext)
 
@@ -613,16 +543,11 @@ export async function getOrCreateDailyRecommendation({ userId, date, weatherCont
   }
 }
 
-// ─────────────────────────────────────────────
-// Refresh today's daily recommendation
-// ─────────────────────────────────────────────
-
 export async function refreshDailyRecommendation({ userId, date, weatherContext = null, reason = null }) {
   if (!date) {
     throw new ApiError(400, 'Date string (YYYY-MM-DD) is required')
   }
 
-  // Guard against empty wardrobe
   const totalClothes = await Cloth.countDocuments({ userId, isArchived: false })
   if (totalClothes === 0) {
     return {
@@ -645,7 +570,7 @@ export async function refreshDailyRecommendation({ userId, date, weatherContext 
   const result = await getOutfitRecommendations({
     userId,
     query,
-    sessionId, // Preserves session novelty so repeated suggestions show varied outfits
+    sessionId,
     count: 1,
     weatherContext,
   })

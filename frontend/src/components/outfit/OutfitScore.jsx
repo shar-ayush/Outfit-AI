@@ -1,16 +1,3 @@
-// src/components/outfit/OutfitScore.jsx
-//
-// Renders Outfit.scoreBreakdown - {color, style, formality, occasion,
-// pattern}. This data was PREVIOUSLY ALWAYS EMPTY due to a backend bug
-// (compatibilityScorer.scoreOutfit() never computed per-category scores,
-// even though the schema and docs implied it did - see the backend fix
-// in compatibilityScorer.js). Now that the backend actually populates
-// these fields, this component can safely render them.
-//
-// Defensive by design: if scoreBreakdown is still empty (e.g. an outfit
-// created before the backend fix was applied), this renders nothing
-// rather than showing 5 misleading zero-bars.
-
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import Text from '@/components/common/Text';

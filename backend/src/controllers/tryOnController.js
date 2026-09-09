@@ -7,13 +7,6 @@ import {
   deleteTryOnResult,
 } from '../services/tryOnService.js'
 
-// ─────────────────────────────────────────────
-// Execute Virtual Try-On
-// POST /api/try-on
-// Accepts multipart/form-data:
-//   files: personImage, apparelImage (optional if clothId or apparelUrl is passed)
-//   body: clothId, personUrl, apparelUrl, prompt
-// ─────────────────────────────────────────────
 export const tryOn = asyncHandler(async (req, res) => {
   const userId = req.user._id
 
@@ -45,10 +38,6 @@ export const tryOn = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, result, 'Virtual try-on completed successfully'))
 })
 
-// ─────────────────────────────────────────────
-// Get user's try-on history
-// GET /api/try-on/history
-// ─────────────────────────────────────────────
 export const getHistory = asyncHandler(async (req, res) => {
   const userId = req.user._id
   const { page = 1, limit = 20 } = req.query
@@ -61,10 +50,6 @@ export const getHistory = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, history, 'Try-on history retrieved successfully'))
 })
 
-// ─────────────────────────────────────────────
-// Delete a saved try-on result
-// DELETE /api/try-on/:id
-// ─────────────────────────────────────────────
 export const deleteTryOn = asyncHandler(async (req, res) => {
   const userId = req.user._id
   const { id } = req.params
