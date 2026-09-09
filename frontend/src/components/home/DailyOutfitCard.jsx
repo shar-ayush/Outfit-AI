@@ -30,6 +30,27 @@ export default function DailyOutfitCard({
   onWeatherRefresh,
   onAskStylist,
 }) {
+  const [savedLocally, setSavedLocally] = React.useState(false);
+
+  const currentOutfitId = outfit?.outfitId || outfit?._id;
+  React.useEffect(() => {
+    setSavedLocally(false);
+  }, [currentOutfitId]);
+
+  React.useEffect(() => {
+    if (!isActionLoading && !outfit?.isSaved) {
+      setSavedLocally(false);
+    }
+  }, [isActionLoading, outfit?.isSaved]);
+
+  const isSaved = Boolean(outfit?.isSaved || savedLocally);
+
+  const handleSave = () => {
+    if (isSaved) return;
+    setSavedLocally(true);
+    onSave?.();
+  };
+
   return (
     <View>
       <Text variant="headlineSm" style={styles.header}>
@@ -164,12 +185,13 @@ export default function DailyOutfitCard({
               </Button>
               <Button
                 variant="secondary"
-                onPress={onSave}
+                onPress={handleSave}
+                disabled={isSaved}
                 loading={isActionLoading === 'saved'}
-                style={styles.actionButtonFlex}
+                style={[styles.actionButtonFlex, isSaved && styles.savedButton]}
                 fullWidth={false}
               >
-                Save
+                {isSaved ? 'Saved' : 'Save'}
               </Button>
               <Button variant="secondary" icon="refresh" size="icon" onPress={onRefresh} fullWidth={false} />
             </View>
@@ -306,4 +328,9 @@ const styles = StyleSheet.create({
   },
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.stackSm },
   actionButtonFlex: { flex: 1 },
+  savedButton: {
+    backgroundColor: colors.surfaceContainerHigh,
+    borderColor: colors.outlineVariant,
+    opacity: 0.85,
+  },
 });
