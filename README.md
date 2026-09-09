@@ -9,6 +9,10 @@ Most people wear roughly 20% of their wardrobe on repeat, yet keep buying clothe
 3. **Smart outfit recommendations that factor in weather, occasion, and your own evolving taste** — not just "these colors look nice together."
 
 ---
+## Download the Android App 
+
+[Link to Download](https://expo.dev/accounts/shar_ayush/projects/outfitai-app/builds/655fc49f-3378-457c-9784-3484186090c3)
+
 ## App Screenshots
 
 ### 1. Home & Daily Weather-Aware Recommendations
