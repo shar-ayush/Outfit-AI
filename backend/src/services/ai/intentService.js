@@ -7,7 +7,7 @@ const VALID = {
   weather:    ['hot','cold','mild','rain'],
   style:      ['casual','formal','streetwear','minimal','sporty','ethnic','bohemian','preppy','classic'],
   slots:      ['top','bottom','footwear','outerwear','accessory','full_body'],
-  messageType: ['outfit_request', 'fashion_question'],
+  messageType: ['outfit_request', 'fashion_question', 'unrelated'],
 }
 
 function validateSlotConstraint(raw) {
@@ -113,13 +113,12 @@ Analyze the user's message for a personal stylist chat app.
 ${recentHistory ? `\nConversation context:\n${recentHistory}\n` : ''}
 Current message: "${userMessage}"
 
-STEP 1 — Classify the message:
-"messageType" is "outfit_request" if the user wants outfit suggestions, is describing
-an occasion, mentions specific clothing items/colors, or is refining a previous
-suggestion. It is "fashion_question" ONLY for general fashion knowledge questions
-that do NOT require looking at the user's wardrobe (e.g. "what is smart casual?",
-"how do I care for linen?", "is it okay to wear white after labor day?").
-When in doubt, prefer "outfit_request".
+STEP 1 — Classify the message into "messageType":
+- "outfit_request": The user wants outfit suggestions, is describing an occasion/event/weather to dress for, mentions specific clothing items/colors to wear, or is refining/swapping an item in a previous suggestion from their wardrobe.
+- "fashion_question": General fashion knowledge, styling advice, dress codes, fabric care, color matching, or fashion trends that do NOT require looking at the user's wardrobe (e.g. "what is smart casual?", "how do I care for linen?", "what colors match with olive green?", "is it okay to wear white after labor day?").
+- "unrelated": The message is completely unrelated to fashion, style, clothing, outfits, shoes, accessories, or wardrobe. This includes general knowledge/trivia, math, coding/programming, politics, science, recipes, sports, random chat, jokes, or queries outside the fashion domain.
+
+When in doubt between "outfit_request" and "fashion_question", prefer "outfit_request". But if the query is clearly not about fashion, classify it as "unrelated".
 
 STEP 2 — If outfit_request, extract ALL of the following:
 - occasions, formality, season, weatherSuitability, style — as before
@@ -160,7 +159,7 @@ STEP 2 — If outfit_request, extract ALL of the following:
 
 Return ONLY valid JSON matching this shape:
 {
-  "messageType": "outfit_request" | "fashion_question",
+  "messageType": "outfit_request" | "fashion_question" | "unrelated",
   "occasions": one of [casual, formal, party, office, date, gym, travel, wedding, beach, college] or null,
   "formality": one of [casual, semi-formal, formal] or null,
   "season": one of [summer, winter, spring, autumn] or null,
@@ -193,6 +192,12 @@ Examples:
   {"messageType":"outfit_request","occasions":"date","formality":"casual","season":null,"weatherSuitability":null,"style":[],"slotConstraints":{},"resetSlots":[],"requestedCount":1,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
 - "what is smart casual?" →
   {"messageType":"fashion_question","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{},"resetSlots":[],"requestedCount":3,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
+- "write python code for quicksort" →
+  {"messageType":"unrelated","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{},"resetSlots":[],"requestedCount":3,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
+- "who won the 2022 world cup?" →
+  {"messageType":"unrelated","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{},"resetSlots":[],"requestedCount":3,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
+- "tell me a joke" →
+  {"messageType":"unrelated","occasions":null,"formality":null,"season":null,"weatherSuitability":null,"style":[],"slotConstraints":{},"resetSlots":[],"requestedCount":3,"excludeConstraints":[],"moodDescriptor":null,"isRefinement":false,"refinementInstruction":null}
   `
 
   try {

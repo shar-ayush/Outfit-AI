@@ -66,6 +66,10 @@ export async function handleStylistMessage({
   // Merge onto prior session intent if this is a refinement
   const intent = mergeIntent(session?.lastIntent, rawIntent)
 
+  if (intent.messageType === 'unrelated') {
+    return handleUnrelatedQuery({ userId, message, session, sessionId })
+  }
+
   if (intent.messageType === 'fashion_question') {
     return handleFashionQuestion({ userId, message, session, sessionId })
   }
@@ -138,8 +142,41 @@ export async function handleStylistMessage({
 }
 
 // ─────────────────────────────────────────────
+// Handle an unrelated (non-fashion) query
+// Politely declines and redirects the user to fashion/styling
+// ─────────────────────────────────────────────
+
+async function handleUnrelatedQuery({ userId, message, session, sessionId }) {
+  const answer = "I'm your personal fashion stylist! I specialize only in clothing, styling advice, and outfit recommendations from your wardrobe. I can't assist with non-fashion topics, but feel free to ask me for outfit ideas, style tips, or what to wear!"
+
+  if (session) {
+    session.messages.push(
+      { role: 'user',      content: message },
+      { role: 'assistant', content: answer }
+    )
+    session.messages = session.messages.slice(-20)
+    await session.save()
+  } else {
+    session = await ConversationSession.create({
+      userId,
+      messages: [
+        { role: 'user',      content: message },
+        { role: 'assistant', content: answer },
+      ],
+      shownItemIds: [],
+    })
+  }
+
+  return {
+    type:      'text',
+    message:   answer,
+    outfits:   [],
+    sessionId: session?._id || sessionId,
+  }
+}
+
+// ─────────────────────────────────────────────
 // Answer a general fashion question
-// Unchanged in logic — just accepts an already-loaded session now
 // ─────────────────────────────────────────────
 
 async function handleFashionQuestion({ userId, message, session, sessionId }) {
@@ -152,7 +189,9 @@ async function handleFashionQuestion({ userId, message, session, sessionId }) {
 
   const prompt = `
 You are a knowledgeable personal stylist AI.
-Answer the user's fashion question concisely and helpfully.
+You specialize strictly and exclusively in fashion, clothing, styling, and wardrobe advice.
+If the user's query is unrelated to fashion, do NOT answer the unrelated question. Instead, politely decline and remind them that you can only assist with fashion, styling, and wardrobe queries.
+Otherwise, answer the user's fashion question concisely and helpfully.
 Be specific and practical.
 
 ${historyText ? `Conversation context:\n${historyText}\n` : ''}
@@ -171,13 +210,14 @@ Keep your answer under 150 words. Be conversational and friendly.
     )
     session.messages = session.messages.slice(-20)
     await session.save()
-  } else if (sessionId) {
+  } else {
     session = await ConversationSession.create({
       userId,
       messages: [
         { role: 'user',      content: message },
         { role: 'assistant', content: answer },
       ],
+      shownItemIds: [],
     })
   }
 

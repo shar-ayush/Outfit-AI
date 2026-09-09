@@ -5,7 +5,13 @@
 import apiClient from './client';
 
 export async function sendChatMessage({ message, sessionId = null, weatherContext = null }) {
-  const { data } = await apiClient.post('/stylist/chat', { message, sessionId, weatherContext });
+  const { data } = await apiClient.post(
+    '/stylist/chat',
+    { message, sessionId, weatherContext },
+    {
+      timeout: 60000, // AI outfit generation + intent extraction can take up to 45s under high load
+    }
+  );
   return data.data; // { type: 'outfits'|'text', outfits, message, sessionId, intent }
 }
 
