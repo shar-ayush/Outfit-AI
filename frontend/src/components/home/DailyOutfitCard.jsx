@@ -6,15 +6,92 @@ import Text from '@/components/common/Text';
 import Button from '@/components/common/Button';
 import Card from '@/components/common/Card';
 import Tag from '@/components/common/Tag';
-import { SkeletonOutfitCard } from '@/components/common/SkeletonLoader';
+import SkeletonLoader, { SkeletonOutfitCard } from '@/components/common/SkeletonLoader';
 import EmptyState from '@/components/common/EmptyState';
 import { colors, spacing, radius } from '@/theme';
+
+const GENERATING_STEPS = [
+  { icon: 'weather-partly-cloudy', text: "Analyzing today's weather & temperature..." },
+  { icon: 'hanger', text: 'Scanning your wardrobe for matching styles...' },
+  { icon: 'palette-outline', text: 'Scoring color harmony & silhouettes...' },
+  { icon: 'creation', text: 'Finalizing curated look & styling tips...' },
+];
+
+function DailyOutfitGeneratingCard({ isRefreshing }) {
+  const [stepIndex, setStepIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setStepIndex((prev) => (prev + 1) % GENERATING_STEPS.length);
+    }, 3200);
+    return () => clearInterval(timer);
+  }, []);
+
+  const currentStep = GENERATING_STEPS[stepIndex];
+
+  return (
+    <Card noPadding elevated style={styles.generatingCard}>
+      <View style={styles.generatingHeader}>
+        <View style={styles.generatingBadge}>
+          <MaterialCommunityIcons name="creation" size={15} color={colors.goldAccent} />
+          <Text variant="labelSm" style={styles.generatingBadgeText}>
+            {isRefreshing ? 'Refreshing Look' : 'Stylist AI Active'}
+          </Text>
+        </View>
+        <Text variant="titleSm" style={styles.generatingTitle}>
+          {isRefreshing ? 'Re-curating your outfit...' : "Curating today's look with AI..."}
+        </Text>
+      </View>
+
+      <View style={styles.generatingItemsRow}>
+        {[
+          { label: 'TOP', icon: 'tshirt-crew-outline' },
+          { label: 'BOTTOM', icon: 'hanger' },
+          { label: 'SHOES', icon: 'shoe-sneaker' },
+        ].map((slot, i) => (
+          <View key={slot.label} style={[styles.generatingSlot, i < 2 && styles.generatingSlotBorder]}>
+            <View style={styles.generatingSlotContent}>
+              <MaterialCommunityIcons name={slot.icon} size={28} color={colors.outlineVariant} />
+              <View style={styles.generatingSlotTag}>
+                <Text variant="caption" style={styles.generatingSlotTagText}>
+                  {slot.label}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.generatingFooter}>
+        <View style={styles.stepRow}>
+          <MaterialCommunityIcons
+            name={currentStep.icon}
+            size={16}
+            color={colors.primary}
+            style={styles.stepIcon}
+          />
+          <Text variant="bodyMd" style={styles.stepText}>
+            {currentStep.text}
+          </Text>
+        </View>
+        <View style={styles.progressBarBackground}>
+          <SkeletonLoader height={3} borderRadius={2} />
+        </View>
+        <Text variant="caption" color="secondary" style={styles.generatingCaption}>
+          Selecting the best combination from your wardrobe
+        </Text>
+      </View>
+    </Card>
+  );
+}
 
 export default function DailyOutfitCard({
   outfit,
   message,
   isLoading,
   isRefreshing,
+  isError,
+  onRetry,
   isActionLoading,
   weatherNudge,
   onWornToday,
@@ -52,7 +129,30 @@ export default function DailyOutfitCard({
       </Text>
 
       {isLoading || isRefreshing ? (
-        <SkeletonOutfitCard />
+        <DailyOutfitGeneratingCard isRefreshing={isRefreshing} />
+      ) : isError && !outfit ? (
+        <Card>
+          <View style={styles.errorContainer}>
+            <View style={styles.errorIconCircle}>
+              <MaterialCommunityIcons name="clock-alert-outline" size={28} color={colors.goldAccent} />
+            </View>
+            <Text variant="titleMd" style={styles.errorTitle}>
+              Curating took longer than usual
+            </Text>
+            <Text variant="bodyMd" color="secondary" style={styles.errorDescription}>
+              Gemini is taking extra time to style today's look. Tap below to retry.
+            </Text>
+            <Button
+              variant="primary"
+              icon="refresh"
+              onPress={onRetry || onRefresh}
+              style={styles.retryButton}
+              fullWidth={false}
+            >
+              Retry Recommendation
+            </Button>
+          </View>
+        </Card>
       ) : !outfit ? (
         <Card>
           <EmptyState
@@ -302,5 +402,124 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerHigh,
     borderColor: colors.outlineVariant,
     opacity: 0.85,
+  },
+  generatingCard: {
+    overflow: 'hidden',
+  },
+  generatingHeader: {
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.gutter,
+    paddingBottom: spacing.stackSm,
+  },
+  generatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: colors.goldAccentLight || 'rgba(201,168,76,0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+    gap: 4,
+    marginBottom: spacing.stackSm,
+  },
+  generatingBadgeText: {
+    color: colors.tertiary,
+    fontFamily: 'Inter_600SemiBold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  generatingTitle: {
+    fontFamily: 'Inter_600SemiBold',
+    color: colors.onSurface,
+  },
+  generatingItemsRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceContainerLow,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.surfaceContainerHigh,
+    height: 140,
+  },
+  generatingSlot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  generatingSlotBorder: {
+    borderRightWidth: 1,
+    borderRightColor: colors.surfaceContainerHigh,
+  },
+  generatingSlotContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  generatingSlotIcon: {
+    opacity: 0.6,
+  },
+  generatingSlotTag: {
+    backgroundColor: colors.surfaceContainer,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  generatingSlotTagText: {
+    color: colors.outline,
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 9,
+    letterSpacing: 0.5,
+  },
+  generatingFooter: {
+    padding: spacing.gutter,
+    gap: spacing.stackSm,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.stackSm,
+  },
+  stepIcon: {
+    opacity: 0.85,
+  },
+  stepText: {
+    fontFamily: 'Inter_500Medium',
+    color: colors.onSurface,
+    flex: 1,
+  },
+  progressBarBackground: {
+    marginTop: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  generatingCaption: {
+    marginTop: 2,
+    fontSize: 11,
+  },
+  errorContainer: {
+    padding: spacing.gutter,
+    alignItems: 'center',
+  },
+  errorIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.full,
+    backgroundColor: colors.goldAccentLight || 'rgba(201,168,76,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.stackMd,
+  },
+  errorTitle: {
+    textAlign: 'center',
+    marginBottom: spacing.stackSm,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  errorDescription: {
+    textAlign: 'center',
+    marginBottom: spacing.stackLg,
+    maxWidth: 280,
+    lineHeight: 20,
+  },
+  retryButton: {
+    minWidth: 160,
   },
 });
