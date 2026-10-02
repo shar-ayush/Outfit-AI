@@ -6,7 +6,7 @@ export async function suggestOutfits({ query, sessionId = null, count = 3, weath
     sessionId,
     count,
     weatherContext,
-  });
+  }, { timeout: 75000 });
   return data.data;
 }
 
@@ -16,7 +16,7 @@ export async function getDailyOutfit({ date, weatherContext = null }) {
     params.temperature = weatherContext.temperature;
     params.condition = weatherContext.condition;
   }
-  const { data } = await apiClient.get('/outfits/daily', { params });
+  const { data } = await apiClient.get('/outfits/daily', { params, timeout: 75000 });
   return data.data;
 }
 
@@ -25,7 +25,7 @@ export async function refreshDailyOutfit({ date, weatherContext = null, reason =
     date,
     weatherContext,
     reason,
-  });
+  }, { timeout: 75000 });
   return data.data;
 }
 

@@ -48,12 +48,29 @@ export default function HomeScreen() {
   const {
     data: dailyData,
     isLoading: dailyLoading,
+    isFetching: dailyFetching,
+    isError: dailyError,
     refetch: refetchDaily,
   } = useDailyOutfit(todayDateStr, weatherContext, {
     enabled: !weatherLoading && !wardrobeStatsLoading && hasClothes,
   });
 
   const currentOutfit = dailyData?.outfit || null;
+
+  const isCheckingPrerequisites = wardrobeStatsLoading || (weatherLoading && !weather);
+  const isDailyLoading =
+    (isCheckingPrerequisites && !currentOutfit) ||
+    (hasClothes && (dailyLoading || dailyFetching) && !currentOutfit);
+
+  const isDailyRefreshing = refreshDailyOutfit.isPending || (dailyFetching && !!currentOutfit);
+
+  const isDailyError =
+    !isCheckingPrerequisites &&
+    hasClothes &&
+    !isDailyLoading &&
+    !isDailyRefreshing &&
+    !currentOutfit &&
+    (dailyError || refreshDailyOutfit.isError);
 
   useFocusEffect(
     useCallback(() => {
@@ -237,8 +254,11 @@ export default function HomeScreen() {
               ? 'Add a few wardrobe items to get your first outfit suggestion.'
               : dailyData?.message
           }
-          isLoading={hasClothes && (dailyLoading || (wardrobeStatsLoading && !wardrobeStats)) && !currentOutfit}
-          isRefreshing={refreshDailyOutfit.isPending}
+          isLoading={isDailyLoading}
+          isRefreshing={isDailyRefreshing}
+          isError={isDailyError}
+          onRetry={handleRefresh}
+          hasClothes={hasClothes}
           isActionLoading={actionLoading}
           weatherNudge={weatherNudge}
           onWornToday={handleWornToday}
