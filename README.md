@@ -11,7 +11,7 @@ Most people wear roughly 20% of their wardrobe on repeat, yet keep buying clothe
 ---
 ## Download the Android App 
 
-[Link to Download](https://expo.dev/accounts/shar_ayush/projects/outfitai-app/builds/655fc49f-3378-457c-9784-3484186090c3)
+[Link to Download](https://drive.google.com/file/d/1qCbhOx26Gkc-cwDJDfm4VzyXESAQxmYQ/view?usp=drive_link)
 
 ## App Screenshots
 
